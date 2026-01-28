@@ -1,0 +1,273 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { HistoryResponse, HistoryFilters, CampaignWithClient } from '../types';
+import { historyApi } from '../api/api';
+import { Layout } from '../components/layout/Layout';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Modal } from '../components/ui/Modal';
+import { formatCurrency, formatDate, formatPlatform } from '../utils/helpers';
+
+// Helper to get full logo URL
+const getLogoUrl = (logoPath: string | null | undefined) => {
+  if (!logoPath) return '';
+  if (logoPath.startsWith('http')) return logoPath;
+  return `http://localhost:3001${logoPath}`;
+};
+
+export function HistoryPage() {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [data, setData] = useState<HistoryResponse | null>(null);
+  const [filters, setFilters] = useState<HistoryFilters>({});
+  const [searchInput, setSearchInput] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<CampaignWithClient | null>(null);
+
+  const fetchHistory = async () => {
+    setIsLoading(true);
+    try {
+      const result = await historyApi.getAll(filters);
+      setData(result);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [filters]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters(prev => ({ ...prev, search: searchInput || undefined }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Group campaigns by month
+  const groupedCampaigns = useMemo(() => {
+    if (!data?.campaigns) return {};
+
+    return data.campaigns.reduce((acc, campaign) => {
+      const date = campaign.archivedAt || campaign.endDate;
+      const monthYear = new Date(date).toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'long',
+      });
+
+      if (!acc[monthYear]) {
+        acc[monthYear] = [];
+      }
+      acc[monthYear].push(campaign);
+      return acc;
+    }, {} as Record<string, CampaignWithClient[]>);
+  }, [data?.campaigns]);
+
+  // Delete history handler
+  const handleDeleteHistory = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await historyApi.delete(deleteTarget.id);
+      setDeleteTarget(null);
+      await fetchHistory();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'เกิดข้อผิดพลาดในการลบประวัติ');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <Layout>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" onClick={() => navigate('/')}>
+          ← กลับหน้าหลัก
+        </Button>
+        <h1 className="text-xl font-bold text-gray-900">📜 ประวัติแคมเปญทั้งหมด</h1>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <Input
+              type="text"
+              placeholder="ค้นหาชื่อแคมเปญ..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          <select
+            value={filters.clientId || 'all'}
+            onChange={(e) => setFilters(prev => ({
+              ...prev,
+              clientId: e.target.value === 'all' ? undefined : e.target.value,
+            }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">ลูกค้าทั้งหมด</option>
+            {data?.clients.map(client => (
+              <option key={client.id} value={client.id}>{client.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={filters.platform || 'all'}
+            onChange={(e) => setFilters(prev => ({
+              ...prev,
+              platform: e.target.value === 'all' ? undefined : e.target.value,
+            }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Platform ทั้งหมด</option>
+            <option value="google_ads">Google Ads</option>
+            <option value="facebook_ads">Facebook Ads</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Summary */}
+      {data?.summary && data.summary.totalCampaigns > 0 && (
+        <div className="bg-blue-50 rounded-lg p-4 mb-6">
+          <div className="text-sm text-blue-800">
+            📊 <strong>สรุป:</strong> {data.summary.totalCampaigns} แคมเปญ |
+            งบรวม {formatCurrency(data.summary.totalBudget)} |
+            ใช้จริง {formatCurrency(data.summary.totalSpent)}
+            {data.summary.totalRemaining > 0 && (
+              <span className="text-green-600"> | เหลือ {formatCurrency(data.summary.totalRemaining)}</span>
+            )}
+            {data.summary.totalOverspent > 0 && (
+              <span className="text-red-600"> | เกิน {formatCurrency(data.summary.totalOverspent)}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Campaign List */}
+      {isLoading ? (
+        <div className="text-center py-12 text-gray-500">กำลังโหลด...</div>
+      ) : !data?.campaigns.length ? (
+        <div className="text-center py-12">
+          <span className="text-4xl">📋</span>
+          <p className="mt-4 text-gray-600">ยังไม่มีประวัติแคมเปญ</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedCampaigns).map(([monthYear, campaigns]) => (
+            <div key={monthYear}>
+              <h2 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">
+                {monthYear}
+              </h2>
+              <div className="space-y-3">
+                {campaigns.map(campaign => {
+                  const remaining = campaign.budget - campaign.spent;
+                  const isOverspent = remaining < 0;
+
+                  return (
+                    <div
+                      key={campaign.id}
+                      className="bg-white rounded-lg shadow-sm border p-4"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                            {campaign.client?.logo ? (
+                              <img
+                                src={getLogoUrl(campaign.client.logo)}
+                                alt=""
+                                className="w-5 h-5 object-contain rounded"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <span>👤</span>
+                            )}
+                            <span>{campaign.client?.name || 'ไม่ทราบ'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">📢</span>
+                            <span className="font-medium text-gray-900">{campaign.name}</span>
+                            <span className="text-xs px-2 py-0.5 bg-gray-100 rounded">
+                              {formatPlatform(campaign.platform, campaign.googleAdsType)}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-sm text-gray-600">
+                            งบ: {formatCurrency(campaign.budget)} |
+                            ใช้ไป: {formatCurrency(campaign.spent)} |
+                            <span className={isOverspent ? 'text-red-600' : 'text-green-600'}>
+                              {isOverspent ? ` เกิน: ${formatCurrency(Math.abs(remaining))}` : ` เหลือ: ${formatCurrency(remaining)}`}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            สิ้นสุด: {formatDate(campaign.endDate)}
+                            {campaign.archivedAt && ` | เก็บประวัติ: ${formatDate(campaign.archivedAt)}`}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteTarget(campaign)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          🗑️ ลบ
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="ยืนยันการลบประวัติ"
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              คุณต้องการลบประวัติแคมเปญ <strong>{deleteTarget.name}</strong> ใช่หรือไม่?
+            </p>
+            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                {deleteTarget.client?.logo ? (
+                  <img src={getLogoUrl(deleteTarget.client.logo)} alt="" className="w-5 h-5 object-contain rounded" />
+                ) : (
+                  <span>👤</span>
+                )}
+                <span>ลูกค้า: {deleteTarget.client?.name || 'ไม่ทราบ'}</span>
+              </div>
+              <div>📢 แคมเปญ: {deleteTarget.name}</div>
+              <div>💰 งบ: {formatCurrency(deleteTarget.budget)} | ใช้จริง: {formatCurrency(deleteTarget.spent)}</div>
+            </div>
+            <p className="text-sm text-red-600">
+              ⚠️ การลบประวัตินี้ไม่สามารถกู้คืนได้
+            </p>
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)} className="flex-1">
+                ยกเลิก
+              </Button>
+              <Button variant="danger" onClick={handleDeleteHistory} className="flex-1" disabled={isDeleting}>
+                {isDeleting ? 'กำลังลบ...' : 'ลบประวัติ'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </Layout>
+  );
+}

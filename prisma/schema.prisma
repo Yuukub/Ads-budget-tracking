@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user") // "user" | "admin"
+  status    String   @default("active") // "active" | "suspended"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  clients   Client[]
+
+  @@map("users")
+}
+
+model Settings {
+  id                 Int      @id @default(autoincrement())
+  appName            String   @default("Ad Budget Tracker") @map("app_name")
+  appLogo            String?  @map("app_logo")
+  primaryColor       String   @default("#3b82f6") @map("primary_color")
+  footerText         String   @default("") @map("footer_text")
+  turnstileEnabled   Boolean  @default(false) @map("turnstile_enabled")
+  turnstileSiteKey   String?  @map("turnstile_site_key")
+  turnstileSecretKey String?  @map("turnstile_secret_key")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model Client {
+  id          Int        @id @default(autoincrement())
+  userId      Int        @map("user_id")
+  name        String
+  logo        String?    // URL หรือ path ของ logo
+  totalBudget Float      @default(0) @map("total_budget")
+  carryOver   Float      @default(0) @map("carry_over") // ยอดยกมา (ลบ = ใช้เกิน)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns   Campaign[]
+
+  @@map("clients")
+}
+
+model Campaign {
+  id            Int       @id @default(autoincrement())
+  clientId      Int?      @map("client_id") // nullable เพื่อเก็บประวัติเมื่อลบลูกค้า
+  name          String
+  budget        Float     @default(0)
+  spent         Float     @default(0)
+  endDate       DateTime  @map("end_date")
+  platform      String    // 'google_ads' or 'facebook_ads'
+  googleAdsType String?   @map("google_ads_type") // 'search', 'display', 'pmax'
+  activeDays    String?   @map("active_days") // JSON array: ["mon","tue","wed","thu","fri","sat"]
+  isArchived    Boolean   @default(false) @map("is_archived")
+  archivedAt    DateTime? @map("archived_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  clientName    String?   @map("client_name") // เก็บชื่อลูกค้าไว้เมื่อลบลูกค้า
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@map("campaigns")
+}
