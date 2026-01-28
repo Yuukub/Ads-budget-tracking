@@ -3,13 +3,13 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth';
-import clientRoutes from './routes/clients';
-import campaignRoutes from './routes/campaigns';
-import historyRoutes from './routes/history';
-import uploadRoutes from './routes/upload';
-import adminRoutes from './routes/admin';
-import settingsRoutes from './routes/settings';
+import authRoutes from './routes/auth.js';
+import clientRoutes from './routes/clients.js';
+import campaignRoutes from './routes/campaigns.js';
+import historyRoutes from './routes/history.js';
+import uploadRoutes from './routes/upload.js';
+import adminRoutes from './routes/admin.js';
+import settingsRoutes from './routes/settings.js';
 
 dotenv.config();
 
@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? [process.env.FRONTEND_URL || '*', 'http://localhost:5173']
     : ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true
