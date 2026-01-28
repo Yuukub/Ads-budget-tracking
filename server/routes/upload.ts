@@ -13,15 +13,30 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../uploads/logos');
+// Ensure uploads directory exists (use /tmp on Vercel)
+const uploadsDir = process.env.VERCEL
+  ? path.join('/tmp', 'uploads/logos')
+  : path.join(__dirname, '../../uploads/logos');
+
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  } catch (error) {
+    console.error('Failed to create uploads directory:', error);
+  }
 }
 
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    // Ensure dir exists (in case /tmp was cleaned)
+    if (!fs.existsSync(uploadsDir)) {
+      try {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      } catch (error) {
+        // Ignore error
+      }
+    }
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
