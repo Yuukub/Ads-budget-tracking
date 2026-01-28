@@ -3,7 +3,9 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { adminMiddleware } from '../middleware/adminAuth.js';
+import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 
 const router = Router();
 
