@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { uploadApi } from '../api/api';
 import { formatCurrency } from '../utils/helpers';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 type TabType = 'dashboard' | 'users' | 'settings' | 'security';
 
@@ -142,8 +143,8 @@ export function AdminPage() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="-mb-px flex space-x-8 min-w-max">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -213,7 +214,7 @@ export function AdminPage() {
 
               {/* Users Tab */}
               {activeTab === 'users' && (
-                <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -303,7 +304,7 @@ export function AdminPage() {
                     />
                     <div className="space-y-4">
                       <label className="block text-sm font-medium text-gray-700">App Logo</label>
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
                         <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
                           {settings.appLogo ? (
                             <img
@@ -358,19 +359,10 @@ export function AdminPage() {
                       placeholder="https://example.com/logo.png"
                     />
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={settings.primaryColor}
-                          onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
-                          className="w-12 h-10 rounded border cursor-pointer"
-                        />
-                        <Input
-                          value={settings.primaryColor}
-                          onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
-                          className="flex-1"
-                        />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Appearance</label>
+                      <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                        <span className="text-sm text-gray-600">Theme Preference</span>
+                        <ThemeToggle />
                       </div>
                     </div>
                     <Input

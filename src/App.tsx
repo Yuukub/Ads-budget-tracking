@@ -119,14 +119,18 @@ function AppRoutes() {
 
 import { GlobalSettings } from './components/GlobalSettings';
 
+import { ThemeProvider } from './context/ThemeContext';
+
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <GlobalSettings />
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <BrowserRouter>
+        <AuthProvider>
+          <GlobalSettings />
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
