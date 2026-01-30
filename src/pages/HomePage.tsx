@@ -35,7 +35,6 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [targetUserName, setTargetUserName] = useState<string>('');
 
   // Modal state
   const [modalType, setModalType] = useState<ModalType>('none');
