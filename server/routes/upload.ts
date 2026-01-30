@@ -42,7 +42,7 @@ router.post('/logo', upload.single('logo'), async (req: AuthRequest, res: Respon
     const filePath = `${fileName}`;
 
     const { error: uploadError } = await getSupabase().storage
-      .from('logos')
+      .from('Logos')
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
         upsert: false
@@ -55,7 +55,7 @@ router.post('/logo', upload.single('logo'), async (req: AuthRequest, res: Respon
 
     // Get public URL
     const { data: { publicUrl } } = getSupabase().storage
-      .from('logos')
+      .from('Logos')
       .getPublicUrl(filePath);
 
     res.json({ url: publicUrl });
@@ -83,7 +83,7 @@ router.delete('/logo', async (req: AuthRequest, res: Response) => {
     }
 
     const { error } = await getSupabase().storage
-      .from('logos')
+      .from('Logos')
       .remove([fileName]);
 
     if (error) {
