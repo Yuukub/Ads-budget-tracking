@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ArrowUpDown } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -11,6 +12,10 @@ export function BudgetLogPage() {
     const [logs, setLogs] = useState<BudgetLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [sortConfig, setSortConfig] = useState<{ key: 'date' | 'clientName'; direction: 'asc' | 'desc' }>({
+        key: 'date',
+        direction: 'desc'
+    });
     const [formData, setFormData] = useState<BudgetLogFormData>({
         clientName: '',
         date: new Date().toISOString().split('T')[0],
@@ -68,9 +73,28 @@ export function BudgetLogPage() {
         }
     };
 
-    // Split logs into Received and Top-up
+    const handleSort = (key: 'date' | 'clientName') => {
+        setSortConfig((current) => ({
+            key,
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    };
+
+    // Split logs into Received and Top-up with Sorting
     const { receivedLogs, topupLogs } = useMemo(() => {
-        return logs.reduce(
+        const sorted = [...logs].sort((a, b) => {
+            if (sortConfig.key === 'date') {
+                return sortConfig.direction === 'asc'
+                    ? new Date(a.date).getTime() - new Date(b.date).getTime()
+                    : new Date(b.date).getTime() - new Date(a.date).getTime();
+            }
+            // Sort by clientName
+            return sortConfig.direction === 'asc'
+                ? a.clientName.localeCompare(b.clientName)
+                : b.clientName.localeCompare(a.clientName);
+        });
+
+        return sorted.reduce(
             (acc, log) => {
                 if (log.type === 'RECEIVED') {
                     acc.receivedLogs.push(log);
@@ -81,7 +105,7 @@ export function BudgetLogPage() {
             },
             { receivedLogs: [] as BudgetLog[], topupLogs: [] as BudgetLog[] }
         );
-    }, [logs]);
+    }, [logs, sortConfig]);
 
     // Calculate totals
     const totalReceived = receivedLogs.reduce((sum, log) => sum + log.amount, 0);
@@ -138,8 +162,24 @@ export function BudgetLogPage() {
                         <table className="w-full text-sm">
                             <thead className="bg-muted text-muted-foreground">
                                 <tr>
-                                    <th className="p-3 text-left font-medium">วันที่</th>
-                                    <th className="p-3 text-left font-medium">ลูกค้า</th>
+                                    <th
+                                        className="p-3 text-left font-medium cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+                                        onClick={() => handleSort('date')}
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            วันที่
+                                            <ArrowUpDown size={14} className="text-green-600 opacity-50" />
+                                        </div>
+                                    </th>
+                                    <th
+                                        className="p-3 text-left font-medium cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+                                        onClick={() => handleSort('clientName')}
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            ลูกค้า
+                                            <ArrowUpDown size={14} className="text-green-600 opacity-50" />
+                                        </div>
+                                    </th>
                                     <th className="p-3 text-right font-medium">ยอดรับ</th>
                                     <th className="p-3 text-right font-medium">ยอด Ads</th>
                                     <th className="p-3 text-center font-medium">ลบ</th>
@@ -178,8 +218,24 @@ export function BudgetLogPage() {
                         <table className="w-full text-sm">
                             <thead className="bg-muted text-muted-foreground">
                                 <tr>
-                                    <th className="p-3 text-left font-medium">วันที่</th>
-                                    <th className="p-3 text-left font-medium">ลูกค้า</th>
+                                    <th
+                                        className="p-3 text-left font-medium cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                                        onClick={() => handleSort('date')}
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            วันที่
+                                            <ArrowUpDown size={14} className="text-orange-600 opacity-50" />
+                                        </div>
+                                    </th>
+                                    <th
+                                        className="p-3 text-left font-medium cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                                        onClick={() => handleSort('clientName')}
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            ลูกค้า
+                                            <ArrowUpDown size={14} className="text-orange-600 opacity-50" />
+                                        </div>
+                                    </th>
                                     <th className="p-3 text-left font-medium">Platform</th>
                                     <th className="p-3 text-right font-medium">ยอดเติม</th>
                                     <th className="p-3 text-center font-medium">ลบ</th>
@@ -255,7 +311,7 @@ export function BudgetLogPage() {
                     <Input
                         label={formData.type === 'RECEIVED' ? 'ยอดรับทั้งหมด' : 'ยอดเติมเงิน'}
                         type="number"
-                        value={formData.amount}
+                        value={formData.amount === 0 ? '' : formData.amount}
                         onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
                         min="0"
                         required
