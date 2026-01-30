@@ -149,8 +149,8 @@ export function AdminPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {tab.label}
@@ -249,6 +249,14 @@ export function AdminPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                             {u.id !== user?.id && (
                               <>
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => navigate(`/admin/user/${u.id}`)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  View / Edit
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"

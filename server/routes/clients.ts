@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma.js';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { authMiddleware, AuthRequest, adminCheckMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -16,10 +16,29 @@ function parseCampaignActiveDays(campaign: any) {
 }
 
 // Get all clients with campaigns (ไม่รวม archived)
+// Admin can view other users' data by providing ?userId=xxx
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    // Check if admin is requesting to view another user's data
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to view other users\' data' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     const clients = await prisma.client.findMany({
-      where: { userId: req.userId },
+      where: { userId: effectiveUserId },
       include: {
         campaigns: {
           where: { isArchived: false }, // filter out archived
@@ -53,12 +72,31 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 });
 
 // Get single client (ไม่รวม archived campaigns)
+// Admin can view other users' clients by providing ?userId=xxx
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    // Check if admin is requesting to view another user's data
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to view other users\' data' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     const client = await prisma.client.findFirst({
       where: {
         id: parseInt(req.params.id),
-        userId: req.userId,
+        userId: effectiveUserId,
       },
       include: {
         campaigns: {
@@ -92,13 +130,32 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Get client history (archived campaigns)
+// Admin can view other users' client history by providing ?userId=xxx
 router.get('/:id/history', async (req: AuthRequest, res: Response) => {
   try {
     const clientId = parseInt(req.params.id);
 
+    // Check if admin is requesting to view another user's data
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to view other users\' data' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     // Check ownership
     const client = await prisma.client.findFirst({
-      where: { id: clientId, userId: req.userId },
+      where: { id: clientId, userId: effectiveUserId },
     });
 
     if (!client) {
@@ -122,6 +179,7 @@ router.get('/:id/history', async (req: AuthRequest, res: Response) => {
 });
 
 // Reset budget (เติมงบใหม่)
+// Admin can reset budget for other users' clients by providing ?userId=xxx
 router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
   try {
     const clientId = parseInt(req.params.id);
@@ -131,9 +189,27 @@ router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Valid new budget is required' });
     }
 
+    // Check if admin is requesting to modify another user's data
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to modify other users\' data' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     // Check ownership
     const existingClient = await prisma.client.findFirst({
-      where: { id: clientId, userId: req.userId },
+      where: { id: clientId, userId: effectiveUserId },
       include: {
         campaigns: {
           where: { isArchived: false },
@@ -186,6 +262,7 @@ router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
 });
 
 // Create client
+// Admin can create client for other users by providing ?userId=xxx
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const { name, totalBudget, logo } = req.body;
@@ -194,13 +271,31 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
+    // Check if admin is creating for another user
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to create for other users' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     const client = await prisma.client.create({
       data: {
         name,
         totalBudget: totalBudget || 0,
         logo: logo || null,
         carryOver: 0,
-        userId: req.userId!,
+        userId: effectiveUserId,
       },
     });
 
@@ -219,16 +314,35 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 });
 
 // Update client
+// Admin can update other users' clients by providing ?userId=xxx
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { name, totalBudget, logo } = req.body;
     const clientId = parseInt(req.params.id);
 
+    // Check if admin is updating another user's data
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to modify other users\' data' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     // Check ownership
     const existingClient = await prisma.client.findFirst({
       where: {
         id: clientId,
-        userId: req.userId,
+        userId: effectiveUserId,
       },
       include: {
         campaigns: {
@@ -282,16 +396,35 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Delete client
+// Admin can delete other users' clients by providing ?userId=xxx
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const clientId = parseInt(req.params.id);
     const { deleteAllHistory } = req.body || {};
 
+    // Check if admin is deleting another user's data
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+
+    if (targetUserId && targetUserId !== req.userId) {
+      // Verify admin status
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true }
+      });
+
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to delete other users\' data' });
+      }
+
+      effectiveUserId = targetUserId;
+    }
+
     // Check ownership
     const existingClient = await prisma.client.findFirst({
       where: {
         id: clientId,
-        userId: req.userId,
+        userId: effectiveUserId,
       },
     });
 

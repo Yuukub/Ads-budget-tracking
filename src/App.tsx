@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -20,6 +20,28 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-500">กำลังโหลด...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user?.role !== 'admin') {
+    return <Navigate to="/" />;
+  }
+
+  return <>{children}</>;
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -32,6 +54,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   return isAuthenticated ? <Navigate to="/" /> : <>{children}</>;
+}
+
+// Wrapper component for admin viewing user data
+function AdminUserView() {
+  const { userId } = useParams<{ userId: string }>();
+  return <HomePage adminMode={true} targetUserId={userId ? parseInt(userId) : undefined} />;
 }
 
 function AppRoutes() {
@@ -75,6 +103,14 @@ function AppRoutes() {
           <PrivateRoute>
             <AdminPage />
           </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/user/:userId"
+        element={
+          <AdminRoute>
+            <AdminUserView />
+          </AdminRoute>
         }
       />
     </Routes>

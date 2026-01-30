@@ -45,35 +45,41 @@ export const authApi = {
 
 // Clients
 export const clientsApi = {
-  getAll: async () => {
-    const { data } = await api.get<Client[]>('/clients');
+  getAll: async (userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.get<Client[]>(`/clients${params}`);
     return data;
   },
 
-  getOne: async (id: number) => {
-    const { data } = await api.get<Client>(`/clients/${id}`);
+  getOne: async (id: number, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.get<Client>(`/clients/${id}${params}`);
     return data;
   },
 
-  create: async (formData: ClientFormData) => {
-    const { data } = await api.post<Client>('/clients', formData);
+  create: async (formData: ClientFormData, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.post<Client>(`/clients${params}`, formData);
     return data;
   },
 
-  update: async (id: number, formData: Partial<ClientFormData>) => {
-    const { data } = await api.put<Client>(`/clients/${id}`, formData);
+  update: async (id: number, formData: Partial<ClientFormData>, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.put<Client>(`/clients/${id}${params}`, formData);
     return data;
   },
 
-  delete: async (id: number, deleteAllHistory: boolean = false) => {
-    await api.delete(`/clients/${id}`, { data: { deleteAllHistory } });
+  delete: async (id: number, deleteAllHistory: boolean = false, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    await api.delete(`/clients/${id}${params}`, { data: { deleteAllHistory } });
   },
 };
 
 // Campaigns
 export const campaignsApi = {
-  create: async (formData: CampaignFormData) => {
-    const { data } = await api.post('/campaigns', formData);
+  create: async (formData: CampaignFormData, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.post(`/campaigns${params}`, formData);
     return data;
   },
 
@@ -99,13 +105,15 @@ export const campaignsApi = {
 
 // Client History & Budget
 export const clientHistoryApi = {
-  getHistory: async (clientId: number) => {
-    const { data } = await api.get<Campaign[]>(`/clients/${clientId}/history`);
+  getHistory: async (clientId: number, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.get<Campaign[]>(`/clients/${clientId}/history${params}`);
     return data;
   },
 
-  resetBudget: async (clientId: number, newBudget: number) => {
-    const { data } = await api.post<Client>(`/clients/${clientId}/reset-budget`, { newBudget });
+  resetBudget: async (clientId: number, newBudget: number, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.post<Client>(`/clients/${clientId}/reset-budget${params}`, { newBudget });
     return data;
   },
 };

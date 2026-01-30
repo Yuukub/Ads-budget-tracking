@@ -7,13 +7,30 @@ const router = Router();
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
-// Helper: Check if user owns the client
-async function checkClientOwnership(clientId: number, userId: number) {
+// Helper: Check if user owns the client (with admin support)
+async function checkClientOwnership(clientId: number, userId: number, isAdmin: boolean = false) {
+  if (isAdmin) {
+    // Admin can access any client
+    const client = await prisma.client.findFirst({
+      where: { id: clientId },
+      include: { campaigns: true },
+    });
+    return client;
+  }
   const client = await prisma.client.findFirst({
     where: { id: clientId, userId },
     include: { campaigns: true },
   });
   return client;
+}
+
+// Helper: Check if user is admin
+async function checkIsAdmin(userId: number): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
+  return user?.role === 'admin';
 }
 
 // Valid days of week
@@ -47,8 +64,16 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Check client ownership
-    const client = await checkClientOwnership(clientId, req.userId!);
+    // Check if admin is creating for another user's client
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    const isAdmin = await checkIsAdmin(req.userId!);
+
+    if (targetUserId && targetUserId !== req.userId && !isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Check client ownership (admin can access any client)
+    const client = await checkClientOwnership(clientId, req.userId!, isAdmin);
     if (!client) {
       return res.status(404).json({ error: 'Client not found' });
     }
@@ -103,8 +128,11 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
-    // Check ownership
-    if (existingCampaign.client.userId !== req.userId) {
+    // Check if admin
+    const isAdmin = await checkIsAdmin(req.userId!);
+
+    // Check ownership (admin can modify any campaign)
+    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
@@ -187,8 +215,11 @@ router.patch('/:id/spent', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
-    // Check ownership
-    if (existingCampaign.client.userId !== req.userId) {
+    // Check if admin
+    const isAdmin = await checkIsAdmin(req.userId!);
+
+    // Check ownership (admin can modify any campaign)
+    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
@@ -225,8 +256,11 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
-    // Check ownership
-    if (existingCampaign.client.userId !== req.userId) {
+    // Check if admin
+    const isAdmin = await checkIsAdmin(req.userId!);
+
+    // Check ownership (admin can delete any campaign)
+    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
@@ -254,8 +288,11 @@ router.post('/:id/archive', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 
-    // Check ownership
-    if (existingCampaign.client.userId !== req.userId) {
+    // Check if admin
+    const isAdmin = await checkIsAdmin(req.userId!);
+
+    // Check ownership (admin can archive any campaign)
+    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
 

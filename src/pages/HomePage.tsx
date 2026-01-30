@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Client, Campaign, ClientFormData, CampaignFormData } from '../types';
 import { clientsApi, campaignsApi, clientHistoryApi } from '../api/api';
 import { Layout } from '../components/layout/Layout';
@@ -23,11 +24,18 @@ const getLogoUrl = (logoPath: string | null) => {
 
 type ModalType = 'none' | 'addClient' | 'editClient' | 'addCampaign' | 'editCampaign' | 'updateSpent' | 'noBudget' | 'selectClientToDelete' | 'deleteClient' | 'deleteCampaign' | 'history' | 'resetBudget';
 
-export function HomePage() {
+interface HomePageProps {
+  adminMode?: boolean;
+  targetUserId?: number;
+}
+
+export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [targetUserName, setTargetUserName] = useState<string>('');
 
   // Modal state
   const [modalType, setModalType] = useState<ModalType>('none');
@@ -43,7 +51,7 @@ export function HomePage() {
 
   const fetchClients = async () => {
     try {
-      const data = await clientsApi.getAll();
+      const data = await clientsApi.getAll(adminMode ? targetUserId : undefined);
       setClients(data);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
@@ -66,7 +74,7 @@ export function HomePage() {
   const handleAddClient = async (data: ClientFormData) => {
     setIsSubmitting(true);
     try {
-      await clientsApi.create(data);
+      await clientsApi.create(data, adminMode ? targetUserId : undefined);
       await fetchClients();
       closeModal();
     } catch (error: any) {
@@ -80,7 +88,7 @@ export function HomePage() {
     if (!selectedClient) return;
     setIsSubmitting(true);
     try {
-      await clientsApi.update(selectedClient.id, data);
+      await clientsApi.update(selectedClient.id, data, adminMode ? targetUserId : undefined);
       await fetchClients();
       closeModal();
     } catch (error: any) {
@@ -94,7 +102,7 @@ export function HomePage() {
     if (!selectedClient) return;
     setIsSubmitting(true);
     try {
-      await clientsApi.delete(selectedClient.id, deleteAllHistory);
+      await clientsApi.delete(selectedClient.id, deleteAllHistory, adminMode ? targetUserId : undefined);
       await fetchClients();
       setDeleteAllHistory(false); // reset
       closeModal();
@@ -109,7 +117,7 @@ export function HomePage() {
   const handleAddCampaign = async (data: CampaignFormData) => {
     setIsSubmitting(true);
     try {
-      await campaignsApi.create(data);
+      await campaignsApi.create(data, adminMode ? targetUserId : undefined);
       await fetchClients();
       closeModal();
     } catch (error: any) {
@@ -182,7 +190,7 @@ export function HomePage() {
     setModalType('history');
     setIsHistoryLoading(true);
     try {
-      const data = await clientHistoryApi.getHistory(client.id);
+      const data = await clientHistoryApi.getHistory(client.id, adminMode ? targetUserId : undefined);
       setHistoryData(data);
     } catch (error: any) {
       alert(error.response?.data?.error || 'เกิดข้อผิดพลาดในการโหลดประวัติ');
@@ -195,7 +203,7 @@ export function HomePage() {
   const handleResetBudget = async (clientId: number, newBudget: number) => {
     setIsSubmitting(true);
     try {
-      await clientHistoryApi.resetBudget(clientId, newBudget);
+      await clientHistoryApi.resetBudget(clientId, newBudget, adminMode ? targetUserId : undefined);
       await fetchClients();
       closeModal();
     } catch (error: any) {
@@ -261,6 +269,32 @@ export function HomePage() {
 
   return (
     <Layout>
+      {/* Admin Mode Banner */}
+      {adminMode && targetUserId && (
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl shadow-lg p-4 mb-6 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <span className="text-2xl">👑</span>
+              </div>
+              <div>
+                <div className="font-bold text-lg">Admin Mode</div>
+                <div className="text-white/80 text-sm">
+                  Viewing and managing data for User ID: {targetUserId}
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/admin')}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              ← Back to Admin Panel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Dashboard Stats */}
       {!isLoading && clients.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
