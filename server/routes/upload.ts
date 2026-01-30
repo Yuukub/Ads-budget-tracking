@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import supabase from '../lib/supabase.js';
+import { getSupabase } from '../lib/supabase.js';
 
 const router = Router();
 
@@ -41,7 +41,7 @@ router.post('/logo', upload.single('logo'), async (req: AuthRequest, res: Respon
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabase().storage
       .from('logos')
       .upload(filePath, file.buffer, {
         contentType: file.mimetype,
@@ -54,7 +54,7 @@ router.post('/logo', upload.single('logo'), async (req: AuthRequest, res: Respon
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    const { data: { publicUrl } } = getSupabase().storage
       .from('logos')
       .getPublicUrl(filePath);
 
@@ -82,7 +82,7 @@ router.delete('/logo', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Invalid URL' });
     }
 
-    const { error } = await supabase.storage
+    const { error } = await getSupabase().storage
       .from('logos')
       .remove([fileName]);
 
