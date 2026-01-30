@@ -159,3 +159,27 @@ export interface AdminUser {
   clientCount: number;
   campaignCount: number;
 }
+
+export interface BudgetLog {
+  id: number;
+  userId: number;
+  clientName: string;
+  date: string; // ISO date string
+  type: 'RECEIVED' | 'TOPUP';
+  amount: number;
+  usableAmount?: number | null;
+  platform?: string | null;
+  note?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetLogFormData {
+  clientName: string;
+  date: string;
+  type: 'RECEIVED' | 'TOPUP';
+  amount: number;
+  usableAmount?: number;
+  platform?: string;
+  note?: string;
+}

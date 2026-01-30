@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData } from '../types';
 
 const API_URL = '/api';
 
@@ -197,6 +197,24 @@ export const adminApi = {
 
   deleteUser: async (userId: number) => {
     const { data } = await api.delete<{ message: string }>(`/admin/users/${userId}`);
+    return data;
+  },
+};
+
+// Budget API
+export const budgetApi = {
+  getAll: async () => {
+    const { data } = await api.get<BudgetLog[]>('/budget');
+    return data;
+  },
+
+  create: async (formData: BudgetLogFormData) => {
+    const { data } = await api.post<BudgetLog>('/budget', formData);
+    return data;
+  },
+
+  delete: async (id: number) => {
+    const { data } = await api.delete<{ message: string }>(`/budget/${id}`);
     return data;
   },
 };

@@ -6,7 +6,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -19,6 +18,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   clients   Client[]
+  budgetLogs BudgetLog[]
 
   @@map("users")
 }
@@ -70,4 +70,21 @@ model Campaign {
   client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@map("campaigns")
+}
+
+model BudgetLog {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  clientName    String   @map("client_name")
+  date          DateTime
+  type          String   // 'RECEIVED' | 'TOPUP'
+  amount        Float
+  usableAmount  Float?   @map("usable_amount")
+  platform      String?
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("budget_logs")
 }

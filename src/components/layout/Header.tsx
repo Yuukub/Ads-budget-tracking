@@ -44,6 +44,13 @@ export function Header() {
                   หน้าหลัก
                 </Link>
                 <Link
+                  to="/budget"
+                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/budget' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
+                    }`}
+                >
+                  บัญชี
+                </Link>
+                <Link
                   to="/history"
                   className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/history' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
                     }`}
@@ -105,18 +112,28 @@ export function Header() {
                 to="/"
                 onClick={() => setIsMenuOpen(false)}
                 className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/'
-                    ? 'bg-blue-50 text-primary'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  ? 'bg-blue-50 text-primary'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
                   }`}
               >
                 🏠 หน้าหลัก
               </Link>
               <Link
+                to="/budget"
+                onClick={() => setIsMenuOpen(false)}
+                className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/budget'
+                  ? 'bg-blue-50 text-primary'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  }`}
+              >
+                📑 บัญชี
+              </Link>
+              <Link
                 to="/history"
                 onClick={() => setIsMenuOpen(false)}
                 className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/history'
-                    ? 'bg-blue-50 text-primary'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  ? 'bg-blue-50 text-primary'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
                   }`}
               >
                 📋 ประวัติ
@@ -126,8 +143,8 @@ export function Header() {
                   to="/admin"
                   onClick={() => setIsMenuOpen(false)}
                   className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin'
-                      ? 'bg-purple-50 text-purple-600'
-                      : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600'
+                    ? 'bg-purple-50 text-purple-600'
+                    : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600'
                     }`}
                 >
                   ⚙️ Admin

@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { HomePage } from './pages/HomePage';
 import { HistoryPage } from './pages/HistoryPage';
+import { BudgetLogPage } from './pages/BudgetLogPage';
 import { AdminPage } from './pages/AdminPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -86,6 +87,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <HomePage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/budget"
+        element={
+          <PrivateRoute>
+            <BudgetLogPage />
           </PrivateRoute>
         }
       />

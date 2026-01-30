@@ -10,6 +10,7 @@ import historyRoutes from './routes/history.js';
 import uploadRoutes from './routes/upload.js';
 import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
+import budgetRoutes from './routes/budget.js';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use('/api/history', historyRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/budget', budgetRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
