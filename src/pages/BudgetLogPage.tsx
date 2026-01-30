@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -168,7 +168,11 @@ export function BudgetLogPage() {
                                     >
                                         <div className="flex items-center gap-1">
                                             วันที่
-                                            <ArrowUpDown size={14} className="text-green-600 opacity-50" />
+                                            {sortConfig.key === 'date' ? (
+                                                sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-green-600" /> : <ArrowDown size={14} className="text-green-600" />
+                                            ) : (
+                                                <ArrowUpDown size={14} className="text-green-600 opacity-50" />
+                                            )}
                                         </div>
                                     </th>
                                     <th
@@ -177,7 +181,11 @@ export function BudgetLogPage() {
                                     >
                                         <div className="flex items-center gap-1">
                                             ลูกค้า
-                                            <ArrowUpDown size={14} className="text-green-600 opacity-50" />
+                                            {sortConfig.key === 'clientName' ? (
+                                                sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-green-600" /> : <ArrowDown size={14} className="text-green-600" />
+                                            ) : (
+                                                <ArrowUpDown size={14} className="text-green-600 opacity-50" />
+                                            )}
                                         </div>
                                     </th>
                                     <th className="p-3 text-right font-medium">ยอดรับ</th>
@@ -224,7 +232,11 @@ export function BudgetLogPage() {
                                     >
                                         <div className="flex items-center gap-1">
                                             วันที่
-                                            <ArrowUpDown size={14} className="text-orange-600 opacity-50" />
+                                            {sortConfig.key === 'date' ? (
+                                                sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-orange-600" /> : <ArrowDown size={14} className="text-orange-600" />
+                                            ) : (
+                                                <ArrowUpDown size={14} className="text-orange-600 opacity-50" />
+                                            )}
                                         </div>
                                     </th>
                                     <th
@@ -233,7 +245,11 @@ export function BudgetLogPage() {
                                     >
                                         <div className="flex items-center gap-1">
                                             ลูกค้า
-                                            <ArrowUpDown size={14} className="text-orange-600 opacity-50" />
+                                            {sortConfig.key === 'clientName' ? (
+                                                sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-orange-600" /> : <ArrowDown size={14} className="text-orange-600" />
+                                            ) : (
+                                                <ArrowUpDown size={14} className="text-orange-600 opacity-50" />
+                                            )}
                                         </div>
                                     </th>
                                     <th className="p-3 text-left font-medium">Platform</th>
