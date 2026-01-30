@@ -82,6 +82,7 @@ export function ResetBudgetModal({ isOpen, onClose, client, onSubmit, isLoading 
         <Input
           label="งบใหม่ (฿)"
           type="number"
+          step="0.01"
           value={newBudget}
           onChange={(e) => setNewBudget(e.target.value)}
           placeholder="100000"

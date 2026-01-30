@@ -123,6 +123,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
       <Input
         label="งบรวมทั้งหมด (฿)"
         type="number"
+        step="0.01"
         value={totalBudget}
         onChange={(e) => setTotalBudget(e.target.value)}
         placeholder="100000"

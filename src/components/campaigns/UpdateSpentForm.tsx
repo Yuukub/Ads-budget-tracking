@@ -47,6 +47,7 @@ export function UpdateSpentForm({ campaign, onSubmit, onCancel, isLoading }: Upd
       <Input
         label="งบที่ใช้ไปแล้ว (฿)"
         type="number"
+        step="0.01"
         value={spent}
         onChange={(e) => setSpent(e.target.value)}
         placeholder="0"

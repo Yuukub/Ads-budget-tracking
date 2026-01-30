@@ -152,6 +152,7 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
         <Input
           label="งบแคมเปญ (฿)"
           type="number"
+          step="0.01"
           value={budget}
           onChange={(e) => setBudget(e.target.value)}
           placeholder="50000"
