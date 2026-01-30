@@ -18,17 +18,13 @@ export function useSettings() {
                 }
 
                 if (data.appLogo) {
-                    const logoUrl = data.appLogo.startsWith('http')
-                        ? data.appLogo
-                        : `http://localhost:3001${data.appLogo}`;
-
                     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
                     if (link) {
-                        link.href = logoUrl;
+                        link.href = data.appLogo;
                     } else {
                         const newLink = document.createElement('link');
                         newLink.rel = 'icon';
-                        newLink.href = logoUrl;
+                        newLink.href = data.appLogo;
                         document.getElementsByTagName('head')[0].appendChild(newLink);
                     }
                 }
@@ -44,8 +40,7 @@ export function useSettings() {
 
     const getLogoUrl = (path: string | null) => {
         if (!path) return '';
-        if (path.startsWith('http')) return path;
-        return `http://localhost:3001${path}`;
+        return path;
     };
 
     return { settings, loading, getLogoUrl };

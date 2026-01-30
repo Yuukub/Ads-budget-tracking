@@ -117,10 +117,13 @@ function AppRoutes() {
   );
 }
 
+import { GlobalSettings } from './components/GlobalSettings';
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <GlobalSettings />
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
