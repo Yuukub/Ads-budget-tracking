@@ -89,6 +89,16 @@ export function BudgetLogPage() {
     const totalTopup = topupLogs.reduce((sum, log) => sum + log.amount, 0);
     const remainingUsable = totalUsable - totalTopup;
 
+    if (isLoading) {
+        return (
+            <Layout>
+                <div className="flex justify-center items-center min-h-[50vh]">
+                    <div className="animate-pulse text-muted-foreground">กำลังโหลดข้อมูล...</div>
+                </div>
+            </Layout>
+        );
+    }
+
     return (
         <Layout>
             <div className="flex items-center justify-between mb-6">
