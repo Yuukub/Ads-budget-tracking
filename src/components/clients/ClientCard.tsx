@@ -46,16 +46,16 @@ export function ClientCard({
   const hasCarryOver = client.carryOver !== 0;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-100">
+      <div className="p-4 border-b border-border">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
           <div className="flex items-center gap-3">
             {client.logo ? (
               <img
                 src={getLogoUrl(client.logo)}
                 alt={`${client.name} logo`}
-                className="w-10 h-10 object-contain rounded-lg border bg-white"
+                className="w-10 h-10 object-contain rounded-lg border border-border bg-card"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                   (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
@@ -63,7 +63,7 @@ export function ClientCard({
               />
             ) : null}
             <span className={`text-xl ${client.logo ? 'hidden' : ''}`}>👤</span>
-            <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+            <h3 className="text-lg font-semibold text-foreground">{client.name}</h3>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {onViewHistory && (
@@ -83,7 +83,7 @@ export function ClientCard({
         {/* Budget Summary */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">💰 งบรวมลูกค้า:</span>
+            <span className="text-muted-foreground">💰 งบรวมลูกค้า:</span>
             <div className="flex items-center gap-2">
               <span className="font-semibold">{formatCurrency(client.totalBudget)}</span>
               {onResetBudget && (
@@ -107,18 +107,18 @@ export function ClientCard({
 
           {hasCarryOver && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">💵 งบที่ใช้ได้:</span>
+              <span className="text-muted-foreground">💵 งบที่ใช้ได้:</span>
               <span className="font-semibold">{formatCurrency(effectiveBudget)}</span>
             </div>
           )}
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">├─ ใช้ไปแล้ว:</span>
-            <span className="text-gray-700">{formatCurrency(client.totalSpent)}</span>
+            <span className="text-muted-foreground">├─ ใช้ไปแล้ว:</span>
+            <span className="text-foreground">{formatCurrency(client.totalSpent)}</span>
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">└─ คงเหลือ:</span>
+            <span className="text-muted-foreground">└─ คงเหลือ:</span>
             <span className={remaining <= 0 ? 'text-red-600' : 'text-green-600'}>
               {formatCurrency(remaining)}
             </span>
@@ -127,19 +127,19 @@ export function ClientCard({
           {/* Progress Bar - งบที่ใช้ไปแล้ว */}
           <div className="mt-2">
             <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all ${spentPercent >= 90 ? 'bg-red-500' : spentPercent >= 70 ? 'bg-yellow-500' : 'bg-green-500'
                     }`}
                   style={{ width: `${Math.min(spentPercent, 100)}%` }}
                 />
               </div>
-              <span className="text-sm text-gray-600 w-12 text-right">{spentPercent}%</span>
+              <span className="text-sm text-muted-foreground w-12 text-right">{spentPercent}%</span>
             </div>
           </div>
 
           {hasNoBudgetLeft && (
-            <div className="mt-2 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+            <div className="mt-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
               ⚠️ งบจัดสรรหมดแล้ว! กด [แก้ไข] เพื่อเพิ่มงบรวม
             </div>
           )}
@@ -149,7 +149,7 @@ export function ClientCard({
       {/* Campaigns */}
       <div className="p-4 space-y-3">
         {client.campaigns.length === 0 ? (
-          <p className="text-center text-gray-500 py-4">
+          <p className="text-center text-muted-foreground py-4">
             ยังไม่มีแคมเปญ กด "+ แคมเปญ" เพื่อเพิ่ม
           </p>
         ) : (
@@ -168,7 +168,7 @@ export function ClientCard({
 
       {/* Footer Summary */}
       {client.campaigns.length > 0 && (
-        <div className="px-4 py-3 bg-gray-50 border-t text-base text-gray-600">
+        <div className="px-4 py-3 bg-muted/50 border-t border-border text-base text-muted-foreground">
           📊 สรุป: {client.campaigns.length} แคมเปญ | งบรวม {formatCurrency(client.allocated)} | ใช้ไป {formatCurrency(client.totalSpent)}
         </div>
       )}

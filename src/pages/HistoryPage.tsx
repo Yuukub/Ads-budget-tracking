@@ -89,14 +89,14 @@ export function HistoryPage() {
         <Button variant="ghost" onClick={() => navigate('/')}>
           ← กลับหน้าหลัก
         </Button>
-        <h1 className="text-xl font-bold text-gray-900">📜 ประวัติแคมเปญทั้งหมด</h1>
+        <h1 className="text-xl font-bold text-foreground">📜 ประวัติแคมเปญทั้งหมด</h1>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
             <Input
               type="text"
               placeholder="ค้นหาชื่อแคมเปญ..."
@@ -112,7 +112,7 @@ export function HistoryPage() {
               ...prev,
               clientId: e.target.value === 'all' ? undefined : e.target.value,
             }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
           >
             <option value="all">ลูกค้าทั้งหมด</option>
             {data?.clients.map(client => (
@@ -126,7 +126,7 @@ export function HistoryPage() {
               ...prev,
               platform: e.target.value === 'all' ? undefined : e.target.value,
             }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background text-foreground"
           >
             <option value="all">Platform ทั้งหมด</option>
             <option value="google_ads">Google Ads</option>
@@ -137,8 +137,8 @@ export function HistoryPage() {
 
       {/* Summary */}
       {data?.summary && data.summary.totalCampaigns > 0 && (
-        <div className="bg-blue-50 rounded-lg p-4 mb-6">
-          <div className="text-sm text-blue-800">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+          <div className="text-sm text-blue-800 dark:text-blue-200">
             📊 <strong>สรุป:</strong> {data.summary.totalCampaigns} แคมเปญ |
             งบรวม {formatCurrency(data.summary.totalBudget)} |
             ใช้จริง {formatCurrency(data.summary.totalSpent)}
@@ -154,17 +154,17 @@ export function HistoryPage() {
 
       {/* Campaign List */}
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500">กำลังโหลด...</div>
+        <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
       ) : !data?.campaigns.length ? (
         <div className="text-center py-12">
           <span className="text-4xl">📋</span>
-          <p className="mt-4 text-gray-600">ยังไม่มีประวัติแคมเปญ</p>
+          <p className="mt-4 text-muted-foreground">ยังไม่มีประวัติแคมเปญ</p>
         </div>
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedCampaigns).map(([monthYear, campaigns]) => (
             <div key={monthYear}>
-              <h2 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">
+              <h2 className="text-lg font-semibold text-foreground mb-3 border-b border-border pb-2">
                 {monthYear}
               </h2>
               <div className="space-y-3">
@@ -175,16 +175,16 @@ export function HistoryPage() {
                   return (
                     <div
                       key={campaign.id}
-                      className="bg-white rounded-lg shadow-sm border p-4"
+                      className="bg-card rounded-lg shadow-sm border border-border p-4"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                             {campaign.client?.logo ? (
                               <img
                                 src={getLogoUrl(campaign.client.logo)}
                                 alt=""
-                                className="w-5 h-5 object-contain rounded"
+                                className="w-5 h-5 object-contain rounded border border-border"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).style.display = 'none';
                                 }}
@@ -196,19 +196,19 @@ export function HistoryPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-lg">📢</span>
-                            <span className="font-medium text-gray-900">{campaign.name}</span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 rounded">
+                            <span className="font-medium text-foreground">{campaign.name}</span>
+                            <span className="text-xs px-2 py-0.5 bg-muted rounded text-muted-foreground">
                               {formatPlatform(campaign.platform, campaign.googleAdsType)}
                             </span>
                           </div>
-                          <div className="mt-2 text-sm text-gray-600">
+                          <div className="mt-2 text-sm text-muted-foreground">
                             งบ: {formatCurrency(campaign.budget)} |
                             ใช้ไป: {formatCurrency(campaign.spent)} |
                             <span className={isOverspent ? 'text-red-600' : 'text-green-600'}>
                               {isOverspent ? ` เกิน: ${formatCurrency(Math.abs(remaining))}` : ` เหลือ: ${formatCurrency(remaining)}`}
                             </span>
                           </div>
-                          <div className="mt-1 text-xs text-gray-400">
+                          <div className="mt-1 text-xs text-muted-foreground">
                             สิ้นสุด: {formatDate(campaign.endDate)}
                             {campaign.archivedAt && ` | เก็บประวัติ: ${formatDate(campaign.archivedAt)}`}
                           </div>
@@ -217,7 +217,7 @@ export function HistoryPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setDeleteTarget(campaign)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           🗑️ ลบ
                         </Button>
@@ -239,10 +239,10 @@ export function HistoryPage() {
       >
         {deleteTarget && (
           <div className="space-y-4">
-            <p className="text-gray-700">
+            <p className="text-foreground">
               คุณต้องการลบประวัติแคมเปญ <strong>{deleteTarget.name}</strong> ใช่หรือไม่?
             </p>
-            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+            <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 {deleteTarget.client?.logo ? (
                   <img src={getLogoUrl(deleteTarget.client.logo)} alt="" className="w-5 h-5 object-contain rounded" />

@@ -65,15 +65,15 @@ export function RegisterPage() {
             ) : (
               <span className="text-4xl">📊</span>
             )}
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">
+            <h1 className="mt-4 text-2xl font-bold text-foreground">
               {settings?.appName || 'สมัครสมาชิก'}
             </h1>
-            <p className="mt-2 text-gray-600">สร้างบัญชีเพื่อเริ่มใช้งาน</p>
+            <p className="mt-2 text-muted-foreground">สร้างบัญชีเพื่อเริ่มใช้งาน</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
@@ -131,7 +131,7 @@ export function RegisterPage() {
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-gray-600">
+          <p className="mt-6 text-center text-muted-foreground">
             มีบัญชีอยู่แล้ว?{' '}
             <Link to="/login" className="text-blue-600 hover:underline">
               เข้าสู่ระบบ

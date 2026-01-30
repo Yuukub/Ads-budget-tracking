@@ -128,12 +128,12 @@ export function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white shadow">
+      <div className="bg-card shadow">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+            <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
             <Button variant="ghost" onClick={() => navigate('/')}>
               Back to Home
             </Button>
@@ -143,7 +143,7 @@ export function AdminPage() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="border-b border-gray-200 overflow-x-auto">
+        <div className="border-b border-border overflow-x-auto">
           <nav className="-mb-px flex space-x-8 min-w-max">
             {tabs.map((tab) => (
               <button
@@ -151,7 +151,7 @@ export function AdminPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
                   ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
                   }`}
               >
                 {tab.label}
@@ -163,7 +163,7 @@ export function AdminPage() {
         {/* Content */}
         <div className="py-6">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading...</div>
+            <div className="text-center py-8 text-muted-foreground">Loading...</div>
           ) : error ? (
             <div className="text-center py-8 text-red-500">{error}</div>
           ) : (
@@ -172,9 +172,9 @@ export function AdminPage() {
               {activeTab === 'dashboard' && dashboard && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Users Card */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-sm text-gray-500 mb-1">Users</div>
-                    <div className="text-3xl font-bold text-gray-900">{dashboard.users.total}</div>
+                  <div className="bg-card rounded-lg shadow p-6">
+                    <div className="text-sm text-muted-foreground mb-1">Users</div>
+                    <div className="text-3xl font-bold text-foreground">{dashboard.users.total}</div>
                     <div className="mt-2 text-sm">
                       <span className="text-green-600">{dashboard.users.active} active</span>
                       {dashboard.users.suspended > 0 && (
@@ -184,15 +184,15 @@ export function AdminPage() {
                   </div>
 
                   {/* Clients Card */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-sm text-gray-500 mb-1">Clients</div>
-                    <div className="text-3xl font-bold text-gray-900">{dashboard.clients.total}</div>
+                  <div className="bg-card rounded-lg shadow p-6">
+                    <div className="text-sm text-muted-foreground mb-1">Clients</div>
+                    <div className="text-3xl font-bold text-foreground">{dashboard.clients.total}</div>
                   </div>
 
                   {/* Campaigns Card */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-sm text-gray-500 mb-1">Active Campaigns</div>
-                    <div className="text-3xl font-bold text-gray-900">{dashboard.campaigns.active}</div>
+                  <div className="bg-card rounded-lg shadow p-6">
+                    <div className="text-sm text-muted-foreground mb-1">Active Campaigns</div>
+                    <div className="text-3xl font-bold text-foreground">{dashboard.campaigns.active}</div>
                     <div className="mt-2 text-sm">
                       <span className="text-gray-600">{dashboard.campaigns.archived} archived</span>
                       {dashboard.campaigns.expiringSoon > 0 && (
@@ -202,10 +202,10 @@ export function AdminPage() {
                   </div>
 
                   {/* Budget Card */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-sm text-gray-500 mb-1">Total Budget</div>
-                    <div className="text-3xl font-bold text-gray-900">{formatCurrency(dashboard.budget.totalBudget)}</div>
-                    <div className="mt-2 text-sm text-gray-600">
+                  <div className="bg-card rounded-lg shadow p-6">
+                    <div className="text-sm text-muted-foreground mb-1">Total Budget</div>
+                    <div className="text-3xl font-bold text-foreground">{formatCurrency(dashboard.budget.totalBudget)}</div>
+                    <div className="mt-2 text-sm text-muted-foreground">
                       Spent: {formatCurrency(dashboard.budget.totalSpent)}
                     </div>
                   </div>
@@ -214,37 +214,37 @@ export function AdminPage() {
 
               {/* Users Tab */}
               {activeTab === 'users' && (
-                <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <div className="bg-card rounded-lg shadow overflow-hidden overflow-x-auto">
+                  <table className="min-w-full divide-y divide-border">
+                    <thead className="bg-muted">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stats</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Role</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Stats</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-card divide-y divide-border">
                       {users.map((u) => (
                         <tr key={u.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{u.name}</div>
-                            <div className="text-sm text-gray-500">{u.email}</div>
+                            <div className="text-sm font-medium text-foreground">{u.name}</div>
+                            <div className="text-sm text-muted-foreground">{u.email}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                            <span className={`px-2 py-1 text-xs rounded-full ${u.role === 'admin' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                               }`}>
                               {u.role}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${u.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            <span className={`px-2 py-1 text-xs rounded-full ${u.status === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
                               }`}>
                               {u.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                             {u.clientCount} clients, {u.campaignCount} campaigns
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
@@ -282,7 +282,7 @@ export function AdminPage() {
                               </>
                             )}
                             {u.id === user?.id && (
-                              <span className="text-gray-400 text-xs">(You)</span>
+                              <span className="text-muted-foreground text-xs">(You)</span>
                             )}
                           </td>
                         </tr>
@@ -294,8 +294,8 @@ export function AdminPage() {
 
               {/* App Settings Tab */}
               {activeTab === 'settings' && settings && (
-                <form onSubmit={handleSaveSettings} className="bg-white rounded-lg shadow p-6 max-w-2xl">
-                  <h2 className="text-lg font-semibold mb-4">App Settings</h2>
+                <form onSubmit={handleSaveSettings} className="bg-card rounded-lg shadow p-6 max-w-2xl">
+                  <h2 className="text-lg font-semibold mb-4 text-foreground">App Settings</h2>
                   <div className="space-y-4">
                     <Input
                       label="App Name"
@@ -303,9 +303,9 @@ export function AdminPage() {
                       onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
                     />
                     <div className="space-y-4">
-                      <label className="block text-sm font-medium text-gray-700">App Logo</label>
+                      <label className="block text-sm font-medium text-foreground">App Logo</label>
                       <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                        <div className="w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden bg-muted">
                           {settings.appLogo ? (
                             <img
                               src={settings.appLogo.startsWith('http') ? settings.appLogo : `http://localhost:3001${settings.appLogo}`}
@@ -346,7 +346,7 @@ export function AdminPage() {
                               </Button>
                             )}
                           </div>
-                          <p className="mt-1 text-xs text-gray-500">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             Recommended: Square SVG or PNG (512x512)
                           </p>
                         </div>
@@ -359,9 +359,9 @@ export function AdminPage() {
                       placeholder="https://example.com/logo.png"
                     />
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Appearance</label>
-                      <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50">
-                        <span className="text-sm text-gray-600">Theme Preference</span>
+                      <label className="block text-sm font-medium text-foreground mb-2">Appearance</label>
+                      <div className="flex items-center gap-4 p-4 border border-border rounded-lg bg-muted/50">
+                        <span className="text-sm text-foreground">Theme Preference</span>
                         <ThemeToggle />
                       </div>
                     </div>
@@ -382,15 +382,15 @@ export function AdminPage() {
 
               {/* Security Tab */}
               {activeTab === 'security' && settings && (
-                <form onSubmit={handleSaveSettings} className="bg-white rounded-lg shadow p-6 max-w-2xl">
-                  <h2 className="text-lg font-semibold mb-4">Security Settings</h2>
+                <form onSubmit={handleSaveSettings} className="bg-card rounded-lg shadow p-6 max-w-2xl">
+                  <h2 className="text-lg font-semibold mb-4 text-foreground">Security Settings</h2>
 
                   {/* Cloudflare Turnstile */}
-                  <div className="border rounded-lg p-4 mb-6">
+                  <div className="border border-border rounded-lg p-4 mb-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-medium">Cloudflare Turnstile</h3>
-                        <p className="text-sm text-gray-500">Protect login/register forms from bots</p>
+                        <h3 className="font-medium text-foreground">Cloudflare Turnstile</h3>
+                        <p className="text-sm text-muted-foreground">Protect login/register forms from bots</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -399,12 +399,12 @@ export function AdminPage() {
                           onChange={(e) => setSettings({ ...settings, turnstileEnabled: e.target.checked })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
                     {settings.turnstileEnabled && (
-                      <div className="space-y-4 pt-4 border-t">
+                      <div className="space-y-4 pt-4 border-t border-border">
                         <Input
                           label="Site Key"
                           value={settings.turnstileSiteKey || ''}
@@ -418,7 +418,7 @@ export function AdminPage() {
                           onChange={(e) => setSettings({ ...settings, turnstileSecretKey: e.target.value || null })}
                           placeholder="0x4AAAAAAA..."
                         />
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           Get your keys from{' '}
                           <a
                             href="https://dash.cloudflare.com/turnstile"

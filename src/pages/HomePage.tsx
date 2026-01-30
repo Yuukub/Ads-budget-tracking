@@ -277,8 +277,8 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
                 <span className="text-2xl">👑</span>
               </div>
               <div>
-                <div className="font-bold text-lg">Admin Mode</div>
-                <div className="text-white/80 text-sm">
+                <div className="font-bold text-foreground">Admin Mode</div>
+                <div className="text-muted-foreground text-sm">
                   Viewing and managing data for User ID: {targetUserId}
                 </div>
               </div>
@@ -297,41 +297,41 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
       {/* Dashboard Stats */}
       {!isLoading && clients.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
+          <div className="bg-card rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
             <div className="flex items-center gap-2">
               <span className="text-2xl">👥</span>
               <div>
-                <div className="text-2xl font-bold text-gray-900">{dashboardStats.clientCount}</div>
-                <div className="text-sm text-gray-500">ลูกค้า</div>
+                <div className="text-2xl font-bold text-foreground">{dashboardStats.clientCount}</div>
+                <div className="text-sm text-muted-foreground">ลูกค้า</div>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
+          <div className="bg-card rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
             <div className="flex items-center gap-2">
               <span className="text-2xl">📢</span>
               <div>
-                <div className="text-2xl font-bold text-gray-900">{dashboardStats.campaignCount}</div>
-                <div className="text-sm text-gray-500">แคมเปญ Active</div>
+                <div className="text-2xl font-bold text-foreground">{dashboardStats.campaignCount}</div>
+                <div className="text-sm text-muted-foreground">แคมเปญ Active</div>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
+          <div className="bg-card rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
             <div className="flex items-center gap-2">
               <span className="text-2xl">💰</span>
               <div>
-                <div className="text-xl font-bold text-gray-900">{formatCurrency(dashboardStats.totalBudget)}</div>
-                <div className="text-sm text-gray-500">งบรวม</div>
+                <div className="text-xl font-bold text-foreground">{formatCurrency(dashboardStats.totalBudget)}</div>
+                <div className="text-sm text-muted-foreground">งบรวม</div>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
+          <div className="bg-card rounded-2xl shadow-md border p-5 hover-lift transition-smooth">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{dashboardStats.expiringSoonCount > 0 ? '⚠️' : '✅'}</span>
               <div>
                 <div className={`text-2xl font-bold ${dashboardStats.expiringSoonCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                   {dashboardStats.expiringSoonCount}
                 </div>
-                <div className="text-sm text-gray-500">ใกล้หมดอายุ</div>
+                <div className="text-sm text-muted-foreground">ใกล้หมดอายุ</div>
               </div>
             </div>
           </div>
@@ -341,7 +341,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
       {/* Header with search and add button */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
         <div className="relative flex-1 max-w-md">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
           <Input
             type="text"
             placeholder="ค้นหาลูกค้า..."
@@ -360,11 +360,11 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
 
       {/* Client list */}
       {isLoading ? (
-        <div className="text-center py-12 text-gray-500">กำลังโหลด...</div>
+        <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
       ) : filteredClients.length === 0 ? (
         <div className="text-center py-12">
           <span className="text-4xl">📋</span>
-          <p className="mt-4 text-gray-600">
+          <p className="mt-4 text-muted-foreground">
             {searchQuery ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีลูกค้า กด "+ เพิ่มลูกค้า" เพื่อเริ่มต้น'}
           </p>
         </div>
@@ -469,7 +469,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
         {modalType === 'selectClientToDelete' && (
           <div className="space-y-4">
             {clients.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">ไม่มีลูกค้า</p>
+              <p className="text-muted-foreground text-center py-4">ไม่มีลูกค้า</p>
             ) : (
               <div className="max-h-80 overflow-y-auto space-y-2">
                 {clients.map((client) => (
@@ -479,7 +479,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
                       setSelectedClient(client);
                       setModalType('deleteClient');
                     }}
-                    className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-red-300 hover:bg-red-50 transition-colors"
+                    className="w-full text-left p-3 rounded-lg border border-border hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -487,14 +487,14 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
                           <img
                             src={getLogoUrl(client.logo)}
                             alt=""
-                            className="w-8 h-8 object-contain rounded border bg-white"
+                            className="w-8 h-8 object-contain rounded border border-border bg-card"
                           />
                         ) : (
                           <span className="text-xl">👤</span>
                         )}
                         <div>
-                          <div className="font-medium text-gray-900">{client.name}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="font-medium text-foreground">{client.name}</div>
+                          <div className="text-sm text-muted-foreground">
                             {client.campaigns.length} แคมเปญ | งบรวม {formatCurrency(client.totalBudget)}
                           </div>
                         </div>
@@ -515,27 +515,27 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
 
         {modalType === 'deleteClient' && selectedClient && (
           <div className="space-y-4">
-            <p className="text-gray-700">
+            <p className="text-foreground">
               คุณต้องการลบลูกค้า <strong>{selectedClient.name}</strong> ใช่หรือไม่?
             </p>
 
             {/* Option checkbox */}
-            <label className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-border cursor-pointer hover:bg-muted">
               <input
                 type="checkbox"
                 checked={deleteAllHistory}
                 onChange={(e) => setDeleteAllHistory(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                className="mt-0.5 w-4 h-4 text-red-600 border-border rounded focus:ring-red-500"
               />
               <div className="text-sm">
-                <span className="font-medium text-gray-900">ลบประวัติทั้งหมดด้วย</span>
-                <p className="text-gray-500 mt-0.5">
+                <span className="font-medium text-foreground">ลบประวัติทั้งหมดด้วย</span>
+                <p className="text-muted-foreground mt-0.5">
                   รวมถึงแคมเปญที่สิ้นสุดแล้วในหน้าประวัติ
                 </p>
               </div>
             </label>
 
-            <div className="text-sm space-y-1 bg-gray-50 rounded-lg p-3">
+            <div className="text-sm space-y-1 bg-muted rounded-lg p-3">
               <p className="text-red-600">
                 ⚠️ แคมเปญที่ยังไม่สิ้นสุดจะถูกลบ
               </p>
@@ -563,7 +563,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
 
         {modalType === 'deleteCampaign' && selectedCampaign && (
           <div className="space-y-4">
-            <p className="text-gray-700">
+            <p className="text-foreground">
               คุณต้องการลบแคมเปญ <strong>{selectedCampaign.name}</strong> ใช่หรือไม่?
             </p>
             <div className="flex gap-3 pt-2">
