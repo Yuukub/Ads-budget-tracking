@@ -103,7 +103,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // Delete history entry (archived campaign)
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const campaignId = parseInt(req.params.id);
+    const campaignId = parseInt(req.params.id as string);
 
     // Get all clients belonging to the user
     const userClients = await prisma.client.findMany({

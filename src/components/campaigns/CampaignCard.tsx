@@ -52,19 +52,20 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 text-base mb-3">
-        <div>
-          <span className="text-gray-500">งบ:</span>
+      {/* Budget Info - Stack on mobile, 3 cols on desktop */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm sm:text-base mb-4 bg-white/50 p-3 rounded-lg border border-gray-100 sm:border-0 sm:bg-transparent sm:p-0">
+        <div className="flex justify-between sm:block">
+          <span className="text-gray-500">งบประมาณ:</span>
           <span className="ml-1 font-medium">{formatCurrency(campaign.budget)}</span>
         </div>
-        <div>
-          <span className="text-gray-500">ใช้ไป:</span>
+        <div className="flex justify-between sm:block">
+          <span className="text-gray-500">ใช้ไปแล้ว:</span>
           <span className={`ml-1 font-medium ${campaign.spent > campaign.budget ? 'text-red-600' : ''}`}>
             {formatCurrency(campaign.spent)}
           </span>
         </div>
-        <div>
-          <span className="text-gray-500">{remaining < 0 ? 'เกิน:' : 'เหลือ:'}</span>
+        <div className="flex justify-between sm:block">
+          <span className="text-gray-500">{remaining < 0 ? 'ใช้เกิน:' : 'คงเหลือ:'}</span>
           <span className={`ml-1 font-medium ${remaining < 0 ? 'text-red-600' : ''}`}>
             {remaining < 0 ? `-${formatCurrency(Math.abs(remaining))}` : formatCurrency(remaining)}
           </span>
@@ -72,14 +73,14 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
       </div>
 
       {/* Active Days & Recommended Budget */}
-      <div className="flex items-center justify-between text-base py-2 mb-2 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-500">📅 เปิด:</span>
-          <div className="flex gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-base py-3 mb-3 border-t border-gray-100 gap-2">
+        <div className="flex items-start sm:items-center gap-2">
+          <span className="text-gray-500 whitespace-nowrap pt-1 sm:pt-0">📅 เปิด:</span>
+          <div className="flex flex-wrap gap-1">
             {sortedActiveDays.map(day => (
               <span
                 key={day}
-                className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium"
+                className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs sm:text-sm font-medium border border-blue-100"
               >
                 {dayLabels[day]}
               </span>
@@ -87,31 +88,33 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
           </div>
         </div>
         {activeRunDays > 0 && remaining > 0 && (
-          <div className="text-right">
-            <span className="text-gray-500">แนะนำ/วัน: </span>
-            <span className="font-semibold text-blue-600">{formatCurrency(recommendedDailyBudget)}</span>
-            <span className="text-gray-400 text-sm ml-1">({activeRunDays} วัน)</span>
+          <div className="flex justify-between sm:block text-right text-sm">
+            <span className="sm:hidden text-gray-500">แนะนำ:</span>
+            <div>
+              <span className="font-semibold text-blue-600">{formatCurrency(recommendedDailyBudget)}</span>
+              <span className="text-gray-400 text-xs ml-1">/วัน ({activeRunDays} วัน)</span>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between text-base">
-        <span className="text-gray-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <span className="text-sm text-gray-500">
           หมดอายุ: {formatDate(campaign.endDate)} ({statusText})
         </span>
-        <div className="flex gap-1.5">
-          <Button variant="soft-success" size="sm" onClick={() => onUpdateSpent(campaign)}>
+        <div className="grid grid-cols-2 sm:flex gap-2">
+          <Button variant="soft-success" size="sm" onClick={() => onUpdateSpent(campaign)} className="justify-center">
             📊 อัพเดท
           </Button>
-          <Button variant="soft-primary" size="sm" onClick={() => onEdit(campaign)}>
+          <Button variant="soft-primary" size="sm" onClick={() => onEdit(campaign)} className="justify-center">
             ✏️ แก้ไข
           </Button>
           {onArchive && (
-            <Button variant="soft-warning" size="sm" onClick={() => onArchive(campaign)}>
+            <Button variant="soft-warning" size="sm" onClick={() => onArchive(campaign)} className="justify-center">
               📁 สิ้นสุด
             </Button>
           )}
-          <Button variant="soft-danger" size="sm" onClick={() => onDelete(campaign)}>
+          <Button variant="soft-danger" size="sm" onClick={() => onDelete(campaign)} className="justify-center">
             🗑️ ลบ
           </Button>
         </div>

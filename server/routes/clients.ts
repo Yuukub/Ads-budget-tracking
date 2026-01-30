@@ -95,7 +95,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 
     const client = await prisma.client.findFirst({
       where: {
-        id: parseInt(req.params.id),
+        id: parseInt(req.params.id as string),
         userId: effectiveUserId,
       },
       include: {
@@ -133,7 +133,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Admin can view other users' client history by providing ?userId=xxx
 router.get('/:id/history', async (req: AuthRequest, res: Response) => {
   try {
-    const clientId = parseInt(req.params.id);
+    const clientId = parseInt(req.params.id as string);
 
     // Check if admin is requesting to view another user's data
     const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
@@ -182,7 +182,7 @@ router.get('/:id/history', async (req: AuthRequest, res: Response) => {
 // Admin can reset budget for other users' clients by providing ?userId=xxx
 router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
   try {
-    const clientId = parseInt(req.params.id);
+    const clientId = parseInt(req.params.id as string);
     const { newBudget } = req.body;
 
     if (!newBudget || newBudget <= 0) {
@@ -318,7 +318,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { name, totalBudget, logo } = req.body;
-    const clientId = parseInt(req.params.id);
+    const clientId = parseInt(req.params.id as string);
 
     // Check if admin is updating another user's data
     const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
@@ -399,7 +399,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Admin can delete other users' clients by providing ?userId=xxx
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const clientId = parseInt(req.params.id);
+    const clientId = parseInt(req.params.id as string);
     const { deleteAllHistory } = req.body || {};
 
     // Check if admin is deleting another user's data

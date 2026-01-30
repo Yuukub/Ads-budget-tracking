@@ -49,7 +49,7 @@ export function ClientCard({
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
           <div className="flex items-center gap-3">
             {client.logo ? (
               <img
@@ -65,16 +65,16 @@ export function ClientCard({
             <span className={`text-xl ${client.logo ? 'hidden' : ''}`}>👤</span>
             <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {onViewHistory && (
-              <Button variant="soft-purple" size="sm" onClick={() => onViewHistory(client)}>
+              <Button variant="soft-purple" size="sm" onClick={() => onViewHistory(client)} className="flex-1 sm:flex-none justify-center">
                 📋 ประวัติ
               </Button>
             )}
-            <Button variant="soft-primary" size="sm" onClick={() => onEdit(client)}>
+            <Button variant="soft-primary" size="sm" onClick={() => onEdit(client)} className="flex-1 sm:flex-none justify-center">
               ✏️ แก้ไข
             </Button>
-            <Button variant="primary" size="sm" onClick={() => onAddCampaign(client)}>
+            <Button variant="primary" size="sm" onClick={() => onAddCampaign(client)} className="flex-1 sm:flex-none justify-center">
               + แคมเปญ
             </Button>
           </div>
@@ -129,9 +129,8 @@ export function ClientCard({
             <div className="flex items-center gap-2">
               <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all ${
-                    spentPercent >= 90 ? 'bg-red-500' : spentPercent >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
+                  className={`h-full transition-all ${spentPercent >= 90 ? 'bg-red-500' : spentPercent >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+                    }`}
                   style={{ width: `${Math.min(spentPercent, 100)}%` }}
                 />
               </div>

@@ -126,7 +126,7 @@ router.get('/users', async (req: AdminRequest, res: Response) => {
 // PUT /api/admin/users/:id/role - Update user role
 router.put('/users/:id/role', async (req: AdminRequest, res: Response) => {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = parseInt(req.params.id as string);
     const { role } = req.body;
 
     if (!['user', 'admin'].includes(role)) {
@@ -160,7 +160,7 @@ router.put('/users/:id/role', async (req: AdminRequest, res: Response) => {
 // PUT /api/admin/users/:id/status - Update user status (suspend/activate)
 router.put('/users/:id/status', async (req: AdminRequest, res: Response) => {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = parseInt(req.params.id as string);
     const { status } = req.body;
 
     if (!['active', 'suspended'].includes(status)) {
@@ -194,7 +194,7 @@ router.put('/users/:id/status', async (req: AdminRequest, res: Response) => {
 // DELETE /api/admin/users/:id - Delete user
 router.delete('/users/:id', async (req: AdminRequest, res: Response) => {
   try {
-    const userId = parseInt(req.params.id);
+    const userId = parseInt(req.params.id as string);
 
     // Prevent deleting self
     if (userId === req.userId) {

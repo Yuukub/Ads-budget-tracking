@@ -115,7 +115,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Update campaign
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const campaignId = parseInt(req.params.id);
+    const campaignId = parseInt(req.params.id as string);
     const { name, budget, endDate, platform, googleAdsType, activeDays } = req.body;
 
     // Get existing campaign with client
@@ -132,8 +132,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     const isAdmin = await checkIsAdmin(req.userId!);
 
     // Check ownership (admin can modify any campaign)
-    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
-      return res.status(404).json({ error: 'Campaign not found' });
+    if (!isAdmin) {
+      if (!existingCampaign.client) {
+        return res.status(404).json({ error: 'Campaign client not found' });
+      }
+      if (existingCampaign.client.userId !== req.userId) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
     }
 
     // Validate budget changes
@@ -146,15 +151,17 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       }
 
       // Check if new budget would exceed client's available budget
-      const otherCampaignsBudget = existingCampaign.client.campaigns
-        .filter(c => c.id !== campaignId)
-        .reduce((sum, c) => sum + c.budget, 0);
-      const available = existingCampaign.client.totalBudget - otherCampaignsBudget;
+      if (existingCampaign.client) {
+        const otherCampaignsBudget = existingCampaign.client.campaigns
+          .filter(c => c.id !== campaignId)
+          .reduce((sum, c) => sum + c.budget, 0);
+        const available = existingCampaign.client.totalBudget - otherCampaignsBudget;
 
-      if (budget > available) {
-        return res.status(400).json({
-          error: `Budget exceeds available amount. Available: ${available}`,
-        });
+        if (budget > available) {
+          return res.status(400).json({
+            error: `Budget exceeds available amount. Available: ${available}`,
+          });
+        }
       }
     }
 
@@ -198,7 +205,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
 // Update spent amount
 router.patch('/:id/spent', async (req: AuthRequest, res: Response) => {
   try {
-    const campaignId = parseInt(req.params.id);
+    const campaignId = parseInt(req.params.id as string);
     const { spent } = req.body;
 
     if (spent === undefined || spent < 0) {
@@ -219,8 +226,13 @@ router.patch('/:id/spent', async (req: AuthRequest, res: Response) => {
     const isAdmin = await checkIsAdmin(req.userId!);
 
     // Check ownership (admin can modify any campaign)
-    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
-      return res.status(404).json({ error: 'Campaign not found' });
+    if (!isAdmin) {
+      if (!existingCampaign.client) {
+        return res.status(404).json({ error: 'Campaign client not found' });
+      }
+      if (existingCampaign.client.userId !== req.userId) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
     }
 
     // อนุญาตให้ spent เกิน budget ได้ (จะแสดงเป็นติดลบ)
@@ -244,7 +256,7 @@ router.patch('/:id/spent', async (req: AuthRequest, res: Response) => {
 // Delete campaign
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const campaignId = parseInt(req.params.id);
+    const campaignId = parseInt(req.params.id as string);
 
     // Get existing campaign
     const existingCampaign = await prisma.campaign.findUnique({
@@ -260,8 +272,13 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     const isAdmin = await checkIsAdmin(req.userId!);
 
     // Check ownership (admin can delete any campaign)
-    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
-      return res.status(404).json({ error: 'Campaign not found' });
+    if (!isAdmin) {
+      if (!existingCampaign.client) {
+        return res.status(404).json({ error: 'Campaign client not found' });
+      }
+      if (existingCampaign.client.userId !== req.userId) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
     }
 
     await prisma.campaign.delete({ where: { id: campaignId } });
@@ -276,7 +293,7 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
 // Archive campaign (เก็บเข้าประวัติ)
 router.post('/:id/archive', async (req: AuthRequest, res: Response) => {
   try {
-    const campaignId = parseInt(req.params.id);
+    const campaignId = parseInt(req.params.id as string);
 
     // Get existing campaign
     const existingCampaign = await prisma.campaign.findUnique({
@@ -292,8 +309,13 @@ router.post('/:id/archive', async (req: AuthRequest, res: Response) => {
     const isAdmin = await checkIsAdmin(req.userId!);
 
     // Check ownership (admin can archive any campaign)
-    if (!isAdmin && existingCampaign.client.userId !== req.userId) {
-      return res.status(404).json({ error: 'Campaign not found' });
+    if (!isAdmin) {
+      if (!existingCampaign.client) {
+        return res.status(404).json({ error: 'Campaign client not found' });
+      }
+      if (existingCampaign.client.userId !== req.userId) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
     }
 
     // Already archived
@@ -305,25 +327,32 @@ router.post('/:id/archive', async (req: AuthRequest, res: Response) => {
     const difference = existingCampaign.budget - existingCampaign.spent;
     // ถ้า difference < 0 หมายความว่าใช้เกิน → ต้องหักจาก carryOver
 
-    // อัพเดท campaign เป็น archived และอัพเดท client.carryOver
-    const [updatedCampaign] = await prisma.$transaction([
+    // อัพเดท campaign เป็น archived และอัพเดท client.carryOver (ถ้ามี client)
+    const transactionOperations: any[] = [
       prisma.campaign.update({
         where: { id: campaignId },
         data: {
           isArchived: true,
           archivedAt: new Date(),
         },
-      }),
-      prisma.client.update({
-        where: { id: existingCampaign.clientId },
-        data: {
-          // เพิ่ม carryOver (ถ้าใช้เกิน difference จะเป็นลบ)
-          carryOver: {
-            increment: difference,
+      })
+    ];
+
+    if (existingCampaign.clientId) {
+      transactionOperations.push(
+        prisma.client.update({
+          where: { id: existingCampaign.clientId },
+          data: {
+            // เพิ่ม carryOver (ถ้าใช้เกิน difference จะเป็นลบ)
+            carryOver: {
+              increment: difference,
+            },
           },
-        },
-      }),
-    ]);
+        })
+      );
+    }
+
+    const [updatedCampaign] = await prisma.$transaction(transactionOperations);
 
     res.json({
       campaign: {
