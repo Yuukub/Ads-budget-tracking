@@ -14,7 +14,7 @@ export function BudgetLogPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: 'date' | 'clientName'; direction: 'asc' | 'desc' }>({
         key: 'date',
-        direction: 'desc'
+        direction: 'asc'
     });
     const [formData, setFormData] = useState<BudgetLogFormData>({
         clientName: '',
