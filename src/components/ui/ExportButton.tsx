@@ -108,7 +108,7 @@ export function ExportButton({
             </Button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-popover ring-1 ring-black ring-opacity-5 focus:outline-none z-50 border border-border overflow-hidden">
+                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-[100] border border-border overflow-hidden">
                     <div className="py-1">
                         <button
                             onClick={exportToExcel}

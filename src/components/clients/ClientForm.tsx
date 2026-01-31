@@ -136,20 +136,22 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
 
         {/* Logo Preview */}
         {logo && (
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg overflow-hidden max-w-full">
             <img
               src={getLogoUrl(logo)}
               alt="Logo preview"
-              className="w-12 h-12 object-contain rounded border bg-white"
+              className="w-12 h-12 object-contain rounded border bg-white flex-shrink-0"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect fill="%23f3f4f6" width="48" height="48"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="12">?</text></svg>';
               }}
             />
-            <div className="flex-1 text-sm text-gray-500 truncate min-w-0">{logo}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-gray-500 truncate">{logo}</div>
+            </div>
             <button
               type="button"
               onClick={handleRemoveLogo}
-              className="text-red-500 hover:text-red-700 text-sm"
+              className="text-red-500 hover:text-red-700 text-sm flex-shrink-0"
             >
               ลบ
             </button>
@@ -162,8 +164,8 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             type="button"
             onClick={() => setLogoInputType('upload')}
             className={`flex-1 py-2 px-3 text-sm rounded-lg border ${logoInputType === 'upload'
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
           >
             อัพโหลดไฟล์
@@ -172,8 +174,8 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             type="button"
             onClick={() => setLogoInputType('url')}
             className={`flex-1 py-2 px-3 text-sm rounded-lg border ${logoInputType === 'url'
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
           >
             ใส่ URL
@@ -194,8 +196,8 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             <label
               htmlFor="logo-upload"
               className={`flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isUploading
-                  ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
-                  : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+                : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
                 }`}
             >
               {isUploading ? (
