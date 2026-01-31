@@ -105,6 +105,13 @@ export function HistoryPage() {
 
       filename += `_${new Date().toISOString().split('T')[0]}`;
 
+      // Sort by Oldest to Newest (Ascending)
+      campaignsToExport.sort((a, b) => {
+        const dateA = new Date(a.endDate).getTime();
+        const dateB = new Date(b.endDate).getTime();
+        return dateA - dateB;
+      });
+
       if (format === 'csv') {
         const exportData = prepareExportData(campaignsToExport);
         // Use ExcelJS for consistent CSV export
