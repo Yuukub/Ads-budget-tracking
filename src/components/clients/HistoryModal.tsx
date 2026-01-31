@@ -52,11 +52,11 @@ export function HistoryModal({ isOpen, onClose, client, history, isLoading }: Hi
                         className="bg-gray-50 rounded-lg p-3 border border-gray-200"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">📢</span>
-                            <span className="font-medium text-gray-900">{campaign.name}</span>
+                          <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                            <span className="text-base flex-shrink-0">📢</span>
+                            <span className="font-medium text-gray-900 truncate">{campaign.name}</span>
                           </div>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
                             {formatPlatform(campaign.platform, campaign.googleAdsType)}
                           </span>
                         </div>

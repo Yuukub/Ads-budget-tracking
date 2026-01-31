@@ -145,7 +145,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
                 (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect fill="%23f3f4f6" width="48" height="48"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="12">?</text></svg>';
               }}
             />
-            <div className="flex-1 text-sm text-gray-500 truncate">{logo}</div>
+            <div className="flex-1 text-sm text-gray-500 truncate min-w-0">{logo}</div>
             <button
               type="button"
               onClick={handleRemoveLogo}
@@ -161,22 +161,20 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
           <button
             type="button"
             onClick={() => setLogoInputType('upload')}
-            className={`flex-1 py-2 px-3 text-sm rounded-lg border ${
-              logoInputType === 'upload'
+            className={`flex-1 py-2 px-3 text-sm rounded-lg border ${logoInputType === 'upload'
                 ? 'bg-blue-50 border-blue-300 text-blue-700'
                 : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             อัพโหลดไฟล์
           </button>
           <button
             type="button"
             onClick={() => setLogoInputType('url')}
-            className={`flex-1 py-2 px-3 text-sm rounded-lg border ${
-              logoInputType === 'url'
+            className={`flex-1 py-2 px-3 text-sm rounded-lg border ${logoInputType === 'url'
                 ? 'bg-blue-50 border-blue-300 text-blue-700'
                 : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
+              }`}
           >
             ใส่ URL
           </button>
@@ -195,11 +193,10 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             />
             <label
               htmlFor="logo-upload"
-              className={`flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                isUploading
+              className={`flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isUploading
                   ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
                   : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-              }`}
+                }`}
             >
               {isUploading ? (
                 <span className="text-gray-500">กำลังอัพโหลด...</span>

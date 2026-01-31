@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import { Download, ChevronDown, FileSpreadsheet, FileText } from 'lucide-react';
 import { HistoryResponse, HistoryFilters, CampaignWithClient } from '../types';
 import { historyApi } from '../api/api';
 import { Layout } from '../components/layout/Layout';
@@ -19,6 +21,10 @@ export function HistoryPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [filters, setFilters] = useState<HistoryFilters>({});
   const [searchInput, setSearchInput] = useState('');
@@ -47,6 +53,87 @@ export function HistoryPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  // Close export menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const prepareExportData = (campaigns: CampaignWithClient[]) => {
+    return campaigns.map(c => {
+      const remaining = c.budget - c.spent;
+      return {
+        'Period': new Date(c.endDate).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }),
+        'Client Name': c.client?.name || 'Unknown',
+        'Campaign Name': c.name,
+        'Platform': formatPlatform(c.platform, c.googleAdsType),
+        'Budget': c.budget,
+        'Spent': c.spent,
+        'Remaining': remaining,
+        'Status': remaining < 0 ? 'Overspent' : 'Under Budget',
+        'Start Date': formatDate(c.createdAt), // Approximation or use activeDays if stored? database has createdAt
+        'End Date': formatDate(c.endDate)
+      };
+    });
+  };
+
+  const handleExport = async (scope: 'current' | 'all', format: 'xlsx' | 'csv') => {
+    setIsExporting(true);
+    setIsExportMenuOpen(false);
+    try {
+      let campaignsToExport: CampaignWithClient[] = [];
+      let filename = 'campaign_history';
+
+      if (scope === 'current') {
+        campaignsToExport = data?.campaigns || [];
+        const filterParts = [];
+        if (filters.clientId) filterParts.push(`client_${filters.clientId}`);
+        if (filters.platform) filterParts.push(filters.platform);
+        if (filterParts.length > 0) filename += `_${filterParts.join('_')}`;
+      } else {
+        // Fetch all
+        const allData = await historyApi.getAll({}); // Empty filters
+        campaignsToExport = allData.campaigns;
+        filename += '_ALL';
+      }
+
+      filename += `_${new Date().toISOString().split('T')[0]}`;
+      const exportData = prepareExportData(campaignsToExport);
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+      // Auto-width columns for Excel
+      if (format === 'xlsx') {
+        const colWidths = Object.keys(exportData[0] || {}).map(() => ({ wch: 20 }));
+        worksheet['!cols'] = colWidths;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Campaigns');
+        XLSX.writeFile(workbook, `${filename}.xlsx`);
+      } else {
+        const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+        const blob = new Blob(['\ufeff' + csvOutput], { type: 'text/csv;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${filename}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('เกิดข้อผิดพลาดในการ Export ข้อมูล');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Group campaigns by month
   const groupedCampaigns = useMemo(() => {
@@ -85,11 +172,65 @@ export function HistoryPage() {
   return (
     <Layout>
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" onClick={() => navigate('/')}>
-          ← กลับหน้าหลัก
-        </Button>
-        <h1 className="text-xl font-bold text-foreground">📜 ประวัติแคมเปญทั้งหมด</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => navigate('/')}>
+            ← กลับหน้าหลัก
+          </Button>
+          <h1 className="text-xl font-bold text-foreground">📜 ประวัติแคมเปญทั้งหมด</h1>
+        </div>
+
+        {/* Export Button & Menu */}
+        <div className="relative" ref={exportMenuRef}>
+          <Button
+            variant="outline"
+            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+            disabled={isExporting}
+            className="flex items-center gap-2"
+          >
+            {isExporting ? <div className="animate-spin text-sm">⏳</div> : <Download size={16} />}
+            Export
+            <ChevronDown size={14} className={`transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+          </Button>
+
+          {isExportMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-popover ring-1 ring-black ring-opacity-5 focus:outline-none z-50 border border-border overflow-hidden">
+              <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Current View ({data?.campaigns.length || 0})
+              </div>
+              <button
+                onClick={() => handleExport('current', 'xlsx')}
+                className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground text-left gap-2"
+              >
+                <FileSpreadsheet size={16} className="text-green-600" /> Excel
+              </button>
+              <button
+                onClick={() => handleExport('current', 'csv')}
+                className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground text-left gap-2"
+              >
+                <FileText size={16} className="text-blue-600" /> CSV
+              </button>
+
+              <div className="border-t border-border my-1"></div>
+
+              <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                All Data
+              </div>
+              <button
+                onClick={() => handleExport('all', 'xlsx')}
+                className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground text-left gap-2"
+              >
+                <FileSpreadsheet size={16} className="text-green-600" /> Excel (All)
+              </button>
+              <button
+                onClick={() => handleExport('all', 'csv')}
+                className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground text-left gap-2"
+              >
+                <FileText size={16} className="text-blue-600" /> CSV (All)
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

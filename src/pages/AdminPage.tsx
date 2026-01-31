@@ -143,8 +143,8 @@ export function AdminPage() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="border-b border-border overflow-x-auto">
-          <nav className="-mb-px flex space-x-8 min-w-max">
+        <div className="border-b border-border">
+          <nav className="-mb-px flex space-x-8">
             {tabs.map((tab) => (
               <button
                 key={tab.id}

@@ -4,6 +4,7 @@ import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { ExportButton, ExportColumn } from '../components/ui/ExportButton';
 import { budgetApi } from '../api/api';
 import { BudgetLog, BudgetLogFormData } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
@@ -25,6 +26,16 @@ export function BudgetLogPage() {
         platform: 'google_ads',
         note: '',
     });
+
+    const exportColumns: ExportColumn[] = [
+        { key: 'date', label: 'Date', formatter: (val) => formatDate(val) },
+        { key: 'clientName', label: 'Client Name' },
+        { key: 'type', label: 'Type' },
+        { key: 'platform', label: 'Platform', formatter: (val) => val || '-' },
+        { key: 'amount', label: 'Amount' },
+        { key: 'usableAmount', label: 'Usable', formatter: (val) => val || 0 },
+        { key: 'note', label: 'Note', formatter: (val) => val || '' },
+    ];
 
     const fetchLogs = async () => {
         setIsLoading(true);
@@ -127,7 +138,14 @@ export function BudgetLogPage() {
         <Layout>
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-xl font-bold text-foreground">📑 บัญชีงบประมาณ (Budget Ledger)</h1>
-                <Button onClick={() => setIsModalOpen(true)}>+ เพิ่มรายการ</Button>
+                <div className="flex gap-2">
+                    <ExportButton
+                        data={logs}
+                        columns={exportColumns}
+                        filename={`budget_log_${new Date().toISOString().split('T')[0]}`}
+                    />
+                    <Button onClick={() => setIsModalOpen(true)}>+ เพิ่มรายการ</Button>
+                </div>
             </div>
 
             {/* Summary Cards */}
