@@ -184,6 +184,25 @@ export function HistoryPage() {
     }
   };
 
+  // Group campaigns by month
+  const groupedCampaigns = useMemo(() => {
+    if (!data?.campaigns) return {};
+
+    return data.campaigns.reduce((acc, campaign) => {
+      const date = campaign.archivedAt || campaign.endDate;
+      const monthYear = new Date(date).toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'long',
+      });
+
+      if (!acc[monthYear]) {
+        acc[monthYear] = [];
+      }
+      acc[monthYear].push(campaign);
+      return acc;
+    }, {} as Record<string, CampaignWithClient[]>);
+  }, [data?.campaigns]);
+
   // Delete history handler
   const handleDeleteHistory = async () => {
     if (!deleteTarget) return;
