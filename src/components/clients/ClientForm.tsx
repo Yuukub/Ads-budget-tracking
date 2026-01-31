@@ -145,8 +145,8 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
                 (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect fill="%23f3f4f6" width="48" height="48"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-size="12">?</text></svg>';
               }}
             />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-gray-500 truncate">{logo}</div>
+            <div className="flex-1 w-0 min-w-0">
+              <div className="text-sm text-gray-500 truncate" title={logo}>{logo}</div>
             </div>
             <button
               type="button"
