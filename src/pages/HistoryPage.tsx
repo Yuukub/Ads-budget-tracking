@@ -194,7 +194,7 @@ export function HistoryPage() {
           </Button>
 
           {isExportMenuOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-popover ring-1 ring-black ring-opacity-5 focus:outline-none z-50 border border-border overflow-hidden">
+            <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-[100] border border-border overflow-hidden">
               <div className="p-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Current View ({data?.campaigns.length || 0})
               </div>
