@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Button } from './Button';
 
 export interface ExportColumn {
@@ -8,6 +8,10 @@ export interface ExportColumn {
     label: string;
     // Optional formatter function
     formatter?: (value: any) => string | number;
+    // Optional width
+    width?: number;
+    // Optional style
+    style?: Partial<ExcelJS.Style>;
 }
 
 interface ExportButtonProps {
@@ -16,6 +20,7 @@ interface ExportButtonProps {
     filename?: string;
     label?: string;
     disabled?: boolean;
+    headerColor?: string;
 }
 
 export function ExportButton({
@@ -23,9 +28,11 @@ export function ExportButton({
     columns,
     filename = 'export',
     label = 'Export',
-    disabled = false
+    disabled = false,
+    headerColor = 'FFD9E1F2' // Light blue default
 }: ExportButtonProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close menu when clicking outside
@@ -42,56 +49,132 @@ export function ExportButton({
         };
     }, []);
 
-    const prepareData = () => {
-        return data.map(item => {
-            const row: Record<string, any> = {};
-            columns.forEach(col => {
-                // Access nested properties if key has dots (e.g. "client.name")
-                const getValue = (obj: any, path: string) => {
-                    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-                };
 
-                const rawValue = getValue(item, col.key);
-                row[col.label] = col.formatter ? col.formatter(rawValue) : rawValue;
+
+    const exportToCSV = async () => {
+        setIsExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Sheet1');
+
+            // Add headers
+            worksheet.columns = columns.map(col => ({ header: col.label, key: col.key }));
+
+            // Add rows
+            const rows = data.map(item => {
+                const row: Record<string, any> = {};
+                columns.forEach(col => {
+                    const getValue = (obj: any, path: string) => {
+                        return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+                    };
+                    const rawValue = getValue(item, col.key);
+                    row[col.key] = col.formatter ? col.formatter(rawValue) : rawValue;
+                });
+                return row;
             });
-            return row;
-        });
+
+            worksheet.addRows(rows);
+
+            // Write to buffer
+            const buffer = await workbook.csv.writeBuffer();
+            const blob = new Blob([buffer], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${filename}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Export CSV failed:', error);
+            alert('Export CSV failed');
+        } finally {
+            setIsExporting(false);
+            setIsOpen(false);
+        }
     };
 
-    const exportToCSV = () => {
-        const exportData = prepareData();
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+    const exportToExcel = async () => {
+        setIsExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Report');
 
-        const blob = new Blob(['\ufeff' + csvOutput], { type: 'text/csv;charset=utf-8' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `${filename}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setIsOpen(false);
-    };
+            // Define Columns
+            worksheet.columns = columns.map(col => ({
+                header: col.label,
+                key: col.key,
+                width: col.width || 20,
+                style: col.style
+            }));
 
-    const exportToExcel = () => {
-        const exportData = prepareData();
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
+            // Add Data
+            const rows = data.map(item => {
+                const row: Record<string, any> = {};
+                columns.forEach(col => {
+                    const getValue = (obj: any, path: string) => {
+                        return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+                    };
+                    const rawValue = getValue(item, col.key);
 
-        // Auto-width columns
-        const colWidths = columns.map(col => {
-            const maxContentWidth = Math.max(
-                col.label.length,
-                ...exportData.map(row => String(row[col.label] || '').length)
-            );
-            return { wch: Math.min(maxContentWidth + 2, 50) }; // Cap width at 50 chars
-        });
-        worksheet['!cols'] = colWidths;
+                    // Keep numbers as numbers for Excel math compatibility
+                    // Only format if explicitly string-conversion is desired, otherwise just value
+                    // But our columns interface asks for formatter returning string|number.
+                    // If formatter formats to string (e.g. "฿1,000"), Excel sees it as text.
+                    // Ideally we should pass raw number and use numFmt. 
+                    // For now, let's trust the formatter unless we want to enforce types.
+                    // A better approach for the future: separate displayFormatter from valueGetter.
 
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-        XLSX.writeFile(workbook, `${filename}.xlsx`);
-        setIsOpen(false);
+                    row[col.key] = col.formatter ? col.formatter(rawValue) : rawValue;
+                });
+                return row;
+            });
+            worksheet.addRows(rows);
+
+            // STYLING
+            // 1. Header Row Styling
+            const headerRow = worksheet.getRow(1);
+            headerRow.font = { bold: true, size: 12, color: { argb: 'FF000000' } };
+            headerRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: headerColor }
+            };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerRow.height = 24;
+
+            // 2. Borders for all cells
+            worksheet.eachRow((row) => {
+                row.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                    // Auto-align numbers to right, text to left is default, ensuring padding
+                    cell.alignment = { ...cell.alignment, vertical: 'middle', indent: 1 };
+                });
+            });
+
+            // Write file
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${filename}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (error) {
+            console.error('Export Excel failed:', error);
+            alert('Export Excel failed');
+        } finally {
+            setIsExporting(false);
+            setIsOpen(false);
+        }
     };
 
     return (
@@ -101,8 +184,9 @@ export function ExportButton({
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 className={`flex items-center gap-2 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 type="button"
+                disabled={disabled || isExporting}
             >
-                <Download size={16} />
+                {isExporting ? <div className="animate-spin text-sm">⏳</div> : <Download size={16} />}
                 {label}
                 <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </Button>
@@ -115,7 +199,7 @@ export function ExportButton({
                             className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground text-left gap-2"
                         >
                             <FileSpreadsheet size={16} className="text-green-600" />
-                            Export to Excel
+                            Export to Excel (Styled)
                         </button>
                         <button
                             onClick={exportToCSV}
