@@ -21,6 +21,7 @@ interface ClientCardProps {
   onArchiveCampaign?: (campaign: Campaign) => void;
   onViewHistory?: (client: Client) => void;
   onResetBudget?: (client: Client) => void;
+  readOnly?: boolean;
 }
 
 export function ClientCard({
@@ -34,6 +35,7 @@ export function ClientCard({
   onArchiveCampaign,
   onViewHistory,
   onResetBudget,
+  readOnly = false,
 }: ClientCardProps) {
   // คำนวณเปอร์เซ็นต์งบที่ใช้ไปแล้ว (จาก effectiveBudget)
   const effectiveBudget = client.effectiveBudget ?? client.totalBudget;
@@ -65,19 +67,21 @@ export function ClientCard({
             <span className={`text-xl ${client.logo ? 'hidden' : ''}`}>👤</span>
             <h3 className="text-lg font-semibold text-foreground">{client.name}</h3>
           </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {onViewHistory && (
-              <Button variant="soft-purple" size="sm" onClick={() => onViewHistory(client)} className="flex-1 sm:flex-none justify-center">
-                📋 ประวัติ
+          {!readOnly && (
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              {onViewHistory && (
+                <Button variant="soft-purple" size="sm" onClick={() => onViewHistory(client)} className="flex-1 sm:flex-none justify-center">
+                  📋 ประวัติ
+                </Button>
+              )}
+              <Button variant="soft-primary" size="sm" onClick={() => onEdit(client)} className="flex-1 sm:flex-none justify-center">
+                ✏️ แก้ไข
               </Button>
-            )}
-            <Button variant="soft-primary" size="sm" onClick={() => onEdit(client)} className="flex-1 sm:flex-none justify-center">
-              ✏️ แก้ไข
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => onAddCampaign(client)} className="flex-1 sm:flex-none justify-center">
-              + แคมเปญ
-            </Button>
-          </div>
+              <Button variant="primary" size="sm" onClick={() => onAddCampaign(client)} className="flex-1 sm:flex-none justify-center">
+                + แคมเปญ
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Budget Summary */}
@@ -89,7 +93,7 @@ export function ClientCard({
                 <span className="text-muted-foreground">💰 งบรวมลูกค้า:</span>
                 <span className="font-semibold">{formatCurrency(client.totalBudget)}</span>
               </div>
-              {onResetBudget && (
+              {!readOnly && onResetBudget && (
                 <Button variant="soft-success" size="sm" className="w-full sm:w-auto" onClick={() => onResetBudget(client)}>
                   💰 เติมงบใหม่
                 </Button>
@@ -157,7 +161,7 @@ export function ClientCard({
             </div>
           </div>
 
-          {hasNoBudgetLeft && (
+          {hasNoBudgetLeft && !readOnly && (
             <div className="mt-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
               ⚠️ งบจัดสรรหมดแล้ว! กด [แก้ไข] เพื่อเพิ่มงบรวม
             </div>
@@ -169,7 +173,7 @@ export function ClientCard({
       <div className="p-4 space-y-3">
         {client.campaigns.length === 0 ? (
           <p className="text-center text-muted-foreground py-4">
-            ยังไม่มีแคมเปญ กด "+ แคมเปญ" เพื่อเพิ่ม
+            {readOnly ? 'ยังไม่มีแคมเปญ' : 'ยังไม่มีแคมเปญ กด "+ แคมเปญ" เพื่อเพิ่ม'}
           </p>
         ) : (
           client.campaigns.map((campaign) => (
@@ -180,6 +184,7 @@ export function ClientCard({
               onEdit={onEditCampaign}
               onDelete={onDeleteCampaign}
               onArchive={onArchiveCampaign}
+              readOnly={readOnly}
             />
           ))
         )}

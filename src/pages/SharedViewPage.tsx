@@ -212,7 +212,7 @@ export function SharedViewPage() {
                 onUpdateSpent={() => {}}
                 onEditCampaign={() => {}}
                 onDeleteCampaign={() => {}}
-                // No action handlers - read only mode
+                readOnly
               />
             ))}
           </div>

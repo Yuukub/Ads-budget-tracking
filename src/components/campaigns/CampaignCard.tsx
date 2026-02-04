@@ -18,9 +18,10 @@ interface CampaignCardProps {
   onEdit: (campaign: Campaign) => void;
   onDelete: (campaign: Campaign) => void;
   onArchive?: (campaign: Campaign) => void;
+  readOnly?: boolean;
 }
 
-export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArchive }: CampaignCardProps) {
+export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArchive, readOnly = false }: CampaignCardProps) {
   const enriched = enrichCampaign(campaign);
   const { daysRemaining, status, remaining, activeRunDays, recommendedDailyBudget } = enriched;
 
@@ -102,22 +103,24 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
         <span className="text-sm text-muted-foreground">
           หมดอายุ: {formatDate(campaign.endDate)} ({statusText})
         </span>
-        <div className="grid grid-cols-2 sm:flex gap-2">
-          <Button variant="soft-success" size="sm" onClick={() => onUpdateSpent(campaign)} className="justify-center">
-            📊 อัพเดท
-          </Button>
-          <Button variant="soft-primary" size="sm" onClick={() => onEdit(campaign)} className="justify-center">
-            ✏️ แก้ไข
-          </Button>
-          {onArchive && (
-            <Button variant="soft-warning" size="sm" onClick={() => onArchive(campaign)} className="justify-center">
-              📁 สิ้นสุด
+        {!readOnly && (
+          <div className="grid grid-cols-2 sm:flex gap-2">
+            <Button variant="soft-success" size="sm" onClick={() => onUpdateSpent(campaign)} className="justify-center">
+              📊 อัพเดท
             </Button>
-          )}
-          <Button variant="soft-danger" size="sm" onClick={() => onDelete(campaign)} className="justify-center">
-            🗑️ ลบ
-          </Button>
-        </div>
+            <Button variant="soft-primary" size="sm" onClick={() => onEdit(campaign)} className="justify-center">
+              ✏️ แก้ไข
+            </Button>
+            {onArchive && (
+              <Button variant="soft-warning" size="sm" onClick={() => onArchive(campaign)} className="justify-center">
+                📁 สิ้นสุด
+              </Button>
+            )}
+            <Button variant="soft-danger" size="sm" onClick={() => onDelete(campaign)} className="justify-center">
+              🗑️ ลบ
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
