@@ -79,8 +79,10 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     }
 
     // Check available budget (round to 2 decimal places to avoid floating point errors)
+    // Include carryOver in effective budget calculation
     const allocated = client.campaigns.reduce((sum, c) => sum + c.budget, 0);
-    const available = Math.round((client.totalBudget - allocated) * 100) / 100;
+    const effectiveBudget = Math.round((client.totalBudget + client.carryOver) * 100) / 100;
+    const available = Math.round((effectiveBudget - allocated) * 100) / 100;
 
     if (budget > available) {
       return res.status(400).json({
@@ -156,7 +158,9 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
           .filter(c => c.id !== campaignId)
           .reduce((sum, c) => sum + c.budget, 0);
         // Round to 2 decimal places to avoid floating point errors
-        const available = Math.round((existingCampaign.client.totalBudget - otherCampaignsBudget) * 100) / 100;
+        // Include carryOver in effective budget calculation
+        const effectiveBudget = Math.round((existingCampaign.client.totalBudget + existingCampaign.client.carryOver) * 100) / 100;
+        const available = Math.round((effectiveBudget - otherCampaignsBudget) * 100) / 100;
 
         if (budget > available) {
           return res.status(400).json({
