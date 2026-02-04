@@ -406,7 +406,7 @@ router.get('/:token/data', async (req: Request, res: Response) => {
       // Get budget logs
       const budgetLogs = await prisma.budgetLog.findMany({
         where: { userId },
-        orderBy: { date: 'desc' },
+        orderBy: { date: 'asc' },
       });
 
       return res.json({
