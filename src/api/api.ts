@@ -247,9 +247,12 @@ export const shareApi = {
   },
 
   // Public API (no auth required)
-  validate: async (token: string, password?: string) => {
-    const params = password ? `?password=${encodeURIComponent(password)}` : '';
-    const { data } = await api.get<{ valid: boolean; pageType: string; ownerName: string; name?: string }>(`/share/${token}/validate${params}`);
+  validate: async (token: string, password?: string, skipLog?: boolean) => {
+    const params = new URLSearchParams();
+    if (password) params.append('password', password);
+    if (skipLog) params.append('skipLog', 'true');
+    const queryString = params.toString();
+    const { data } = await api.get<{ valid: boolean; pageType: string; ownerName: string; name?: string }>(`/share/${token}/validate${queryString ? `?${queryString}` : ''}`);
     return data;
   },
 

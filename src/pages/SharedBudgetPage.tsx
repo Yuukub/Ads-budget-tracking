@@ -43,10 +43,19 @@ export function SharedBudgetPage() {
       setError(null);
       setPasswordError(null);
 
-      // Validate token
-      const validation = await shareApi.validate(token, pwd);
+      // Check if already logged in this session (same key as SharedViewPage)
+      const sessionKey = `share_logged_${token}`;
+      const alreadyLogged = sessionStorage.getItem(sessionKey) === 'true';
+
+      // Validate token (skipLog if already logged in this session)
+      const validation = await shareApi.validate(token, pwd, alreadyLogged);
       setShareInfo(validation);
       setRequiresPassword(false);
+
+      // Mark as logged in session storage
+      if (!alreadyLogged) {
+        sessionStorage.setItem(sessionKey, 'true');
+      }
 
       // Check if this page is allowed
       if (!['budget', 'all'].includes(validation.pageType)) {

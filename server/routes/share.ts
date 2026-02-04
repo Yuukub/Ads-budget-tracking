@@ -12,7 +12,7 @@ function generateToken(): string {
 }
 
 // Helper: Parse campaign activeDays
-function parseCampaignActiveDays(campaign: { activeDays: string | null; [key: string]: unknown }) {
+function parseCampaignActiveDays(campaign: { activeDays: string | null;[key: string]: unknown }) {
   return {
     ...campaign,
     activeDays: campaign.activeDays ? JSON.parse(campaign.activeDays) : null,
@@ -218,7 +218,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
 router.get('/:token/validate', async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
-    const { password } = req.query;
+    const { password, skipLog } = req.query;
 
     const shareLink = await prisma.shareLink.findUnique({
       where: { token },
@@ -257,6 +257,48 @@ router.get('/:token/validate', async (req: Request, res: Response) => {
       const isValid = await bcrypt.compare(password as string, shareLink.password);
       if (!isValid) {
         return res.status(401).json({ error: 'รหัสผ่านไม่ถูกต้อง' });
+      }
+    }
+
+    // Log access only if skipLog is not set (first visit in session)
+    if (skipLog !== 'true') {
+      await prisma.$transaction([
+        prisma.shareLink.update({
+          where: { id: shareLink.id },
+          data: { viewCount: { increment: 1 } },
+        }),
+        prisma.shareAccessLog.create({
+          data: {
+            shareLinkId: shareLink.id,
+            ipAddress: req.ip || req.headers['x-forwarded-for'] as string || null,
+            userAgent: req.headers['user-agent'] || null,
+          },
+        }),
+      ]);
+
+      // Cleanup: Keep only the latest 100 logs per share link
+      const logCount = await prisma.shareAccessLog.count({
+        where: { shareLinkId: shareLink.id },
+      });
+
+      if (logCount > 100) {
+        // Find the 100th newest log's accessedAt timestamp
+        const oldestToKeep = await prisma.shareAccessLog.findMany({
+          where: { shareLinkId: shareLink.id },
+          orderBy: { accessedAt: 'desc' },
+          skip: 99,
+          take: 1,
+          select: { accessedAt: true },
+        });
+
+        if (oldestToKeep.length > 0) {
+          await prisma.shareAccessLog.deleteMany({
+            where: {
+              shareLinkId: shareLink.id,
+              accessedAt: { lt: oldestToKeep[0].accessedAt },
+            },
+          });
+        }
       }
     }
 
@@ -318,20 +360,7 @@ router.get('/:token/data', async (req: Request, res: Response) => {
       }
     }
 
-    // Increment view count and log access
-    await prisma.$transaction([
-      prisma.shareLink.update({
-        where: { id: shareLink.id },
-        data: { viewCount: { increment: 1 } },
-      }),
-      prisma.shareAccessLog.create({
-        data: {
-          shareLinkId: shareLink.id,
-          ipAddress: req.ip || req.headers['x-forwarded-for'] as string || null,
-          userAgent: req.headers['user-agent'] || null,
-        },
-      }),
-    ]);
+    // Note: Access logging is now handled in validate endpoint
 
     // Fetch data based on page type
     const requestedPage = page as string || 'home';

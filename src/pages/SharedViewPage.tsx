@@ -44,10 +44,19 @@ export function SharedViewPage() {
       setError(null);
       setPasswordError(null);
 
-      // Validate token
-      const validation = await shareApi.validate(token, pwd);
+      // Check if already logged in this session
+      const sessionKey = `share_logged_${token}`;
+      const alreadyLogged = sessionStorage.getItem(sessionKey) === 'true';
+
+      // Validate token (skipLog if already logged in this session)
+      const validation = await shareApi.validate(token, pwd, alreadyLogged);
       setShareInfo(validation);
       setRequiresPassword(false);
+
+      // Mark as logged in session storage
+      if (!alreadyLogged) {
+        sessionStorage.setItem(sessionKey, 'true');
+      }
 
       // Check if this page is allowed
       if (!['home', 'all'].includes(validation.pageType)) {
@@ -210,12 +219,12 @@ export function SharedViewPage() {
               <ClientCard
                 key={client.id}
                 client={client}
-                onEdit={() => {}}
-                onDelete={() => {}}
-                onAddCampaign={() => {}}
-                onUpdateSpent={() => {}}
-                onEditCampaign={() => {}}
-                onDeleteCampaign={() => {}}
+                onEdit={() => { }}
+                onDelete={() => { }}
+                onAddCampaign={() => { }}
+                onUpdateSpent={() => { }}
+                onEditCampaign={() => { }}
+                onDeleteCampaign={() => { }}
                 readOnly
               />
             ))}
