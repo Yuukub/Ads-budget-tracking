@@ -81,60 +81,79 @@ export function ClientCard({
         </div>
 
         {/* Budget Summary */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">💰 งบรวมลูกค้า:</span>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{formatCurrency(client.totalBudget)}</span>
+        <div className="space-y-3">
+          {/* งบประมาณ */}
+          <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
+              <div className="flex items-center justify-between sm:justify-start gap-2">
+                <span className="text-muted-foreground">💰 งบรวมลูกค้า:</span>
+                <span className="font-semibold">{formatCurrency(client.totalBudget)}</span>
+              </div>
               {onResetBudget && (
-                <Button variant="soft-success" size="sm" onClick={() => onResetBudget(client)}>
+                <Button variant="soft-success" size="sm" className="w-full sm:w-auto" onClick={() => onResetBudget(client)}>
                   💰 เติมงบใหม่
                 </Button>
               )}
             </div>
-          </div>
 
-          {hasCarryOver && (
-            <div className="flex items-center justify-between text-sm">
-              <span className={client.carryOver < 0 ? 'text-red-500' : 'text-blue-500'}>
-                {client.carryOver < 0 ? '⚠️ ยกมา (ใช้เกิน):' : '💵 ยกมา (เหลือ):'}
-              </span>
-              <span className={client.carryOver < 0 ? 'text-red-600 font-medium' : 'text-blue-600 font-medium'}>
-                {client.carryOver < 0 ? `-${formatCurrency(Math.abs(client.carryOver))}` : formatCurrency(client.carryOver)}
-              </span>
-            </div>
-          )}
-
-          {hasCarryOver && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">💵 งบที่ใช้ได้:</span>
-              <span className="font-semibold">{formatCurrency(effectiveBudget)}</span>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">├─ ใช้ไปแล้ว:</span>
-            <span className="text-foreground">{formatCurrency(client.totalSpent)}</span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">└─ คงเหลือ:</span>
-            <span className={remaining <= 0 ? 'text-red-600' : 'text-green-600'}>
-              {formatCurrency(remaining)}
-            </span>
-          </div>
-
-          {/* Progress Bar - งบที่ใช้ไปแล้ว */}
-          <div className="mt-2">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all ${spentPercent >= 90 ? 'bg-red-500' : spentPercent >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                  style={{ width: `${Math.min(spentPercent, 100)}%` }}
-                />
+            {hasCarryOver && (
+              <div className="flex items-center justify-between text-sm">
+                <span className={client.carryOver < 0 ? 'text-red-500' : 'text-blue-500'}>
+                  {client.carryOver < 0 ? '⚠️ ยกมา (ใช้เกิน):' : '💵 ยกมา (เหลือ):'}
+                </span>
+                <span className={client.carryOver < 0 ? 'text-red-600 font-medium' : 'text-blue-600 font-medium'}>
+                  {client.carryOver < 0 ? `-${formatCurrency(Math.abs(client.carryOver))}` : formatCurrency(client.carryOver)}
+                </span>
               </div>
-              <span className="text-sm text-muted-foreground w-12 text-right">{spentPercent}%</span>
+            )}
+
+            {hasCarryOver && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">💵 งบที่ใช้ได้:</span>
+                <span className="font-semibold">{formatCurrency(effectiveBudget)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* การจัดสรรงบ */}
+          <div className="space-y-1 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">📋 จัดสรรแล้ว:</span>
+              <span className="text-foreground">{formatCurrency(client.allocated)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">📦 ยังไม่จัดสรร:</span>
+              <span className={client.unallocated <= 0 ? 'text-amber-600' : 'text-blue-600'}>
+                {formatCurrency(client.unallocated)}
+              </span>
+            </div>
+          </div>
+
+          {/* การใช้งาน */}
+          <div className="space-y-1 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">💸 ใช้ไปแล้ว:</span>
+              <span className="text-foreground">{formatCurrency(client.totalSpent)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">💵 คงเหลือ:</span>
+              <span className={remaining <= 0 ? 'text-red-600' : 'text-green-600'}>
+                {formatCurrency(remaining)}
+              </span>
+            </div>
+
+            {/* Progress Bar - งบที่ใช้ไปแล้ว */}
+            <div className="mt-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${spentPercent >= 90 ? 'bg-red-500' : spentPercent >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}
+                    style={{ width: `${Math.min(spentPercent, 100)}%` }}
+                  />
+                </div>
+                <span className="text-sm text-muted-foreground w-12 text-right">{spentPercent}%</span>
+              </div>
             </div>
           </div>
 
