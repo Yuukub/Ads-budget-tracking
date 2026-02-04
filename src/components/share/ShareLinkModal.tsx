@@ -151,8 +151,9 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[5vh] sm:pt-[10vh] bg-black/50 overflow-y-auto">
-      <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50">
+      <div className="min-h-full flex items-center justify-center p-4">
+        <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col relative">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">🔗 แชร์ลิงค์</h2>
@@ -367,6 +368,7 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
