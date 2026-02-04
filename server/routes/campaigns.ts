@@ -13,13 +13,21 @@ async function checkClientOwnership(clientId: number, userId: number, isAdmin: b
     // Admin can access any client
     const client = await prisma.client.findFirst({
       where: { id: clientId },
-      include: { campaigns: true },
+      include: {
+        campaigns: {
+          where: { isArchived: false }, // Only include active campaigns
+        },
+      },
     });
     return client;
   }
   const client = await prisma.client.findFirst({
     where: { id: clientId, userId },
-    include: { campaigns: true },
+    include: {
+      campaigns: {
+        where: { isArchived: false }, // Only include active campaigns
+      },
+    },
   });
   return client;
 }
@@ -123,7 +131,15 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     // Get existing campaign with client
     const existingCampaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
-      include: { client: { include: { campaigns: true } } },
+      include: {
+        client: {
+          include: {
+            campaigns: {
+              where: { isArchived: false }, // Only include active campaigns
+            },
+          },
+        },
+      },
     });
 
     if (!existingCampaign) {
