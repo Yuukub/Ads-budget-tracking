@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse } from '../types';
 
 const API_URL = '/api';
 
@@ -215,6 +215,48 @@ export const budgetApi = {
 
   delete: async (id: number) => {
     const { data } = await api.delete<{ message: string }>(`/budget/${id}`);
+    return data;
+  },
+};
+
+// Share Link API
+export const shareApi = {
+  create: async (formData: ShareLinkFormData) => {
+    const { data } = await api.post<ShareLink>('/share', formData);
+    return data;
+  },
+
+  getMyLinks: async () => {
+    const { data } = await api.get<ShareLink[]>('/share');
+    return data;
+  },
+
+  getAccessLogs: async (id: string) => {
+    const { data } = await api.get<ShareAccessLog[]>(`/share/${id}/logs`);
+    return data;
+  },
+
+  update: async (id: string, formData: Partial<ShareLinkFormData & { isActive: boolean }>) => {
+    const { data } = await api.put<ShareLink>(`/share/${id}`, formData);
+    return data;
+  },
+
+  delete: async (id: string) => {
+    const { data } = await api.delete<{ success: boolean }>(`/share/${id}`);
+    return data;
+  },
+
+  // Public API (no auth required)
+  validate: async (token: string, password?: string) => {
+    const params = password ? `?password=${encodeURIComponent(password)}` : '';
+    const { data } = await api.get<{ valid: boolean; pageType: string; ownerName: string; name?: string }>(`/share/${token}/validate${params}`);
+    return data;
+  },
+
+  getData: async (token: string, page: 'home' | 'budget', password?: string) => {
+    const params = new URLSearchParams({ page });
+    if (password) params.append('password', password);
+    const { data } = await api.get<SharedDataResponse>(`/share/${token}/data?${params.toString()}`);
     return data;
   },
 };

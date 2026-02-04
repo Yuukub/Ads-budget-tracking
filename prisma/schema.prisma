@@ -19,6 +19,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
   clients   Client[]
   budgetLogs BudgetLog[]
+  shareLinks ShareLink[]
 
   @@map("users")
 }
@@ -87,4 +88,39 @@ model BudgetLog {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("budget_logs")
+}
+
+model ShareLink {
+  id          String    @id @default(cuid())
+  userId      Int       @map("user_id")
+  token       String    @unique
+  name        String?
+  pageType    String    @default("all") @map("page_type") // "home" | "budget" | "all"
+  expiresAt   DateTime? @map("expires_at")
+  password    String?   // hashed password
+  maxViews    Int?      @map("max_views")
+  viewCount   Int       @default(0) @map("view_count")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLogs  ShareAccessLog[]
+
+  @@index([token])
+  @@index([userId])
+  @@map("share_links")
+}
+
+model ShareAccessLog {
+  id          String    @id @default(cuid())
+  shareLinkId String    @map("share_link_id")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  accessedAt  DateTime  @default(now()) @map("accessed_at")
+
+  shareLink   ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  @@index([shareLinkId])
+  @@map("share_access_logs")
 }

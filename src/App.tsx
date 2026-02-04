@@ -6,6 +6,8 @@ import { HomePage } from './pages/HomePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { BudgetLogPage } from './pages/BudgetLogPage';
 import { AdminPage } from './pages/AdminPage';
+import { SharedViewPage } from './pages/SharedViewPage';
+import { SharedBudgetPage } from './pages/SharedBudgetPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -122,6 +124,9 @@ function AppRoutes() {
           </AdminRoute>
         }
       />
+      {/* Public Share Routes */}
+      <Route path="/s/:token" element={<SharedViewPage />} />
+      <Route path="/s/:token/budget" element={<SharedBudgetPage />} />
     </Routes>
   );
 }

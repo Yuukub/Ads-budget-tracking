@@ -2,14 +2,16 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { useSettings } from '../../hooks/useSettings';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Share2 } from 'lucide-react';
 import { useState } from 'react';
+import { ShareLinkModal } from '../share/ShareLinkModal';
 
 export function Header() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const { settings, getLogoUrl } = useSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -73,6 +75,15 @@ export function Header() {
           {/* Desktop User Menu */}
           {user && (
             <div className="hidden md:flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsShareModalOpen(true)}
+                className="gap-2"
+              >
+                <Share2 size={16} />
+                <span>แชร์</span>
+              </Button>
               <span className="text-gray-600 text-sm font-medium">สวัสดี, {user.name}</span>
               <Button
                 variant="ghost"
@@ -152,7 +163,16 @@ export function Header() {
               )}
             </nav>
 
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2 border-t border-gray-100 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setIsShareModalOpen(true); setIsMenuOpen(false); }}
+                className="w-full justify-center gap-2"
+              >
+                <Share2 size={16} />
+                <span>แชร์</span>
+              </Button>
               <Button
                 variant="danger"
                 size="sm"
@@ -166,6 +186,12 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {/* Share Link Modal */}
+      <ShareLinkModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
     </header>
   );
 }

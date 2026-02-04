@@ -183,3 +183,44 @@ export interface BudgetLogFormData {
   platform?: string;
   note?: string;
 }
+
+// Share Link Types
+export type SharePageType = 'home' | 'budget' | 'all';
+
+export interface ShareLink {
+  id: string;
+  token: string;
+  name: string | null;
+  pageType: SharePageType;
+  expiresAt: string | null;
+  maxViews: number | null;
+  viewCount: number;
+  isActive: boolean;
+  hasPassword: boolean;
+  accessCount?: number;
+  isExpired?: boolean;
+  isMaxedOut?: boolean;
+  createdAt: string;
+}
+
+export interface ShareLinkFormData {
+  name?: string;
+  pageType?: SharePageType;
+  expiresAt?: string | null;
+  password?: string | null;
+  maxViews?: number | null;
+}
+
+export interface ShareAccessLog {
+  id: string;
+  shareLinkId: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  accessedAt: string;
+}
+
+export interface SharedDataResponse {
+  pageType: 'home' | 'budget';
+  ownerName: string;
+  data: Client[] | BudgetLog[];
+}

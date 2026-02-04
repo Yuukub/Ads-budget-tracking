@@ -11,6 +11,7 @@ import uploadRoutes from './routes/upload.js';
 import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
 import budgetRoutes from './routes/budget.js';
+import shareRoutes from './routes/share.js';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/budget', budgetRoutes);
+app.use('/api/share', shareRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
