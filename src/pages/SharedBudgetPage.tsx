@@ -82,9 +82,11 @@ export function SharedBudgetPage() {
   const receivedLogs = budgetLogs.filter((log) => log.type === 'RECEIVED');
   const topupLogs = budgetLogs.filter((log) => log.type === 'TOPUP');
 
-  // Calculate totals
+  // Calculate totals (like original BudgetLogPage)
   const totalReceived = receivedLogs.reduce((sum, log) => sum + log.amount, 0);
+  const totalUsable = receivedLogs.reduce((sum, log) => sum + (log.usableAmount || 0), 0);
   const totalTopup = topupLogs.reduce((sum, log) => sum + log.amount, 0);
+  const remainingUsable = totalUsable - totalTopup;
 
   // Format date
   const formatDate = (dateStr: string) => {
@@ -156,11 +158,15 @@ export function SharedBudgetPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Shared View Banner */}
-      <div className="bg-blue-500 text-white py-2 px-4 text-center text-sm">
-        👁️ กำลังดูในโหมดแชร์ (Read-Only) • ข้อมูลของ {shareInfo?.ownerName}
+      <div className="bg-blue-500 text-white py-2 px-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+        <span className="text-sm">
+          👁️ กำลังดูในโหมดแชร์ (Read-Only) • ข้อมูลของ {shareInfo?.ownerName}
+        </span>
         {shareInfo?.pageType === 'all' && (
-          <Link to={`/s/${token}`} className="ml-4 underline hover:no-underline">
-            ← ดูหน้าหลัก
+          <Link to={`/s/${token}`}>
+            <Button variant="outline" size="sm" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
+              ← 🏠 ดูหน้าหลัก
+            </Button>
           </Link>
         )}
       </div>
@@ -176,89 +182,95 @@ export function SharedBudgetPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-            <div className="text-sm text-green-600 dark:text-green-400">รวมรับงบ</div>
-            <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-              {formatCurrency(totalReceived)}
-            </div>
-            <div className="text-xs text-green-500">{receivedLogs.length} รายการ</div>
+        {/* Summary Cards - 4 cards like original */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-sm text-muted-foreground">ยอดรับทั้งหมด</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
           </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="text-sm text-blue-600 dark:text-blue-400">รวมเติมงบ</div>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-              {formatCurrency(totalTopup)}
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-sm text-muted-foreground">งบ Ads ที่ใช้ได้ (Usable)</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalUsable)}</div>
+          </div>
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-sm text-muted-foreground">เบิกเติมแล้ว (Top-up)</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalTopup)}</div>
+          </div>
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-sm text-muted-foreground">คงเหลือเบิก (Remaining)</div>
+            <div className={`text-2xl font-bold ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}>
+              {formatCurrency(remainingUsable)}
             </div>
-            <div className="text-xs text-blue-500">{topupLogs.length} รายการ</div>
           </div>
         </div>
 
-        {/* Two Column Layout */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Received Logs */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="bg-green-500 text-white px-4 py-3 font-semibold">
-              💵 รับงบจากลูกค้า
+        {/* Two Column Table Layout - like original */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Received Logs */}
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="bg-green-50 dark:bg-green-900/20 p-3 border-b border-green-100 dark:border-green-800">
+              <h2 className="font-semibold text-green-800 dark:text-green-200">📥 รายรับ (Received)</h2>
             </div>
-            <div className="divide-y divide-border max-h-96 overflow-y-auto">
-              {receivedLogs.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">ไม่มีข้อมูล</div>
-              ) : (
-                receivedLogs.map((log) => (
-                  <div key={log.id} className="p-3 hover:bg-muted/50">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-medium text-foreground">{log.clientName}</div>
-                        <div className="text-xs text-muted-foreground">{formatDate(log.date)}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-green-600">{formatCurrency(log.amount)}</div>
-                        {log.usableAmount && (
-                          <div className="text-xs text-muted-foreground">
-                            ใช้ได้: {formatCurrency(log.usableAmount)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {log.note && (
-                      <div className="text-xs text-muted-foreground mt-1">{log.note}</div>
-                    )}
-                  </div>
-                ))
-              )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted text-muted-foreground">
+                  <tr>
+                    <th className="p-3 text-left font-medium">วันที่</th>
+                    <th className="p-3 text-left font-medium">ลูกค้า</th>
+                    <th className="p-3 text-right font-medium">ยอดรับ</th>
+                    <th className="p-3 text-right font-medium">ยอด Ads</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {receivedLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-muted/50">
+                      <td className="p-3">{formatDate(log.date)}</td>
+                      <td className="p-3 font-medium">{log.clientName}</td>
+                      <td className="p-3 text-right text-green-600">{formatCurrency(log.amount)}</td>
+                      <td className="p-3 text-right text-blue-600">{formatCurrency(log.usableAmount || 0)}</td>
+                    </tr>
+                  ))}
+                  {receivedLogs.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">ไม่มีข้อมูล</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Topup Logs */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="bg-blue-500 text-white px-4 py-3 font-semibold">
-              💰 เติมงบลูกค้า
+          {/* Right: Top-up Logs */}
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="bg-orange-50 dark:bg-orange-900/20 p-3 border-b border-orange-100 dark:border-orange-800">
+              <h2 className="font-semibold text-orange-800 dark:text-orange-200">📤 รายจ่าย (Top-up)</h2>
             </div>
-            <div className="divide-y divide-border max-h-96 overflow-y-auto">
-              {topupLogs.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">ไม่มีข้อมูล</div>
-              ) : (
-                topupLogs.map((log) => (
-                  <div key={log.id} className="p-3 hover:bg-muted/50">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-medium text-foreground">{log.clientName}</div>
-                        <div className="text-xs text-muted-foreground">{formatDate(log.date)}</div>
-                        {log.platform && (
-                          <div className="text-xs text-muted-foreground">{log.platform}</div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-blue-600">{formatCurrency(log.amount)}</div>
-                      </div>
-                    </div>
-                    {log.note && (
-                      <div className="text-xs text-muted-foreground mt-1">{log.note}</div>
-                    )}
-                  </div>
-                ))
-              )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted text-muted-foreground">
+                  <tr>
+                    <th className="p-3 text-left font-medium">วันที่</th>
+                    <th className="p-3 text-left font-medium">ลูกค้า</th>
+                    <th className="p-3 text-left font-medium">Platform</th>
+                    <th className="p-3 text-right font-medium">ยอดเติม</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {topupLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-muted/50">
+                      <td className="p-3">{formatDate(log.date)}</td>
+                      <td className="p-3 font-medium">{log.clientName}</td>
+                      <td className="p-3 text-muted-foreground text-xs">{log.platform || '-'}</td>
+                      <td className="p-3 text-right text-orange-600">{formatCurrency(log.amount)}</td>
+                    </tr>
+                  ))}
+                  {topupLogs.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-muted-foreground">ไม่มีข้อมูล</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

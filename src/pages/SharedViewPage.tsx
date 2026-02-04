@@ -153,11 +153,15 @@ export function SharedViewPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Shared View Banner */}
-      <div className="bg-blue-500 text-white py-2 px-4 text-center text-sm">
-        👁️ กำลังดูในโหมดแชร์ (Read-Only) • ข้อมูลของ {shareInfo?.ownerName}
+      <div className="bg-blue-500 text-white py-2 px-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+        <span className="text-sm">
+          👁️ กำลังดูในโหมดแชร์ (Read-Only) • ข้อมูลของ {shareInfo?.ownerName}
+        </span>
         {shareInfo?.pageType === 'all' && (
-          <Link to={`/s/${token}/budget`} className="ml-4 underline hover:no-underline">
-            ดูหน้าบัญชี →
+          <Link to={`/s/${token}/budget`}>
+            <Button variant="outline" size="sm" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
+              📒 ดูหน้าบัญชี →
+            </Button>
           </Link>
         )}
       </div>
