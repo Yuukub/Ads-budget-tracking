@@ -12,7 +12,7 @@ function generateToken(): string {
 }
 
 // Helper: Parse campaign activeDays
-function parseCampaignActiveDays(campaign: { activeDays: string | null;[key: string]: unknown }) {
+function parseCampaignActiveDays(campaign: any) {
   return {
     ...campaign,
     activeDays: campaign.activeDays ? JSON.parse(campaign.activeDays) : null,
@@ -109,7 +109,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // Get access logs for a share link
 router.get('/:id/logs', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
     const shareLink = await prisma.shareLink.findFirst({
       where: { id, userId: req.userId },
@@ -120,7 +120,7 @@ router.get('/:id/logs', authMiddleware, async (req: AuthRequest, res: Response) 
     }
 
     const logs = await prisma.shareAccessLog.findMany({
-      where: { shareLinkId: id },
+      where: { shareLinkId: id as string },
       orderBy: { accessedAt: 'desc' },
       take: 100, // Limit to last 100 logs
     });
@@ -135,7 +135,7 @@ router.get('/:id/logs', authMiddleware, async (req: AuthRequest, res: Response) 
 // Update share link
 router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
     const { name, expiresAt, password, maxViews, isActive } = req.body;
 
     const shareLink = await prisma.shareLink.findFirst({
@@ -191,7 +191,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 // Delete share link
 router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
     const shareLink = await prisma.shareLink.findFirst({
       where: { id, userId: req.userId },
@@ -217,7 +217,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
 // Validate share token
 router.get('/:token/validate', async (req: Request, res: Response) => {
   try {
-    const { token } = req.params;
+    const { token } = req.params as { token: string };
     const { password, skipLog } = req.query;
 
     const shareLink = await prisma.shareLink.findUnique({
@@ -227,7 +227,7 @@ router.get('/:token/validate', async (req: Request, res: Response) => {
           select: { name: true },
         },
       },
-    });
+    }) as any;
 
     if (!shareLink) {
       return res.status(404).json({ error: 'ลิงค์ไม่ถูกต้องหรือถูกลบแล้ว' });
@@ -317,7 +317,7 @@ router.get('/:token/validate', async (req: Request, res: Response) => {
 // Get shared data
 router.get('/:token/data', async (req: Request, res: Response) => {
   try {
-    const { token } = req.params;
+    const { token } = req.params as { token: string };
     const { password, page } = req.query;
 
     const shareLink = await prisma.shareLink.findUnique({
@@ -327,7 +327,7 @@ router.get('/:token/data', async (req: Request, res: Response) => {
           select: { id: true, name: true },
         },
       },
-    });
+    }) as any;
 
     if (!shareLink) {
       return res.status(404).json({ error: 'ลิงค์ไม่ถูกต้องหรือถูกลบแล้ว' });
