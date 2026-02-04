@@ -151,9 +151,11 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50">
-      <div className="min-h-full flex items-center justify-center p-4">
-        <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div
+        className="bg-card border border-border rounded-xl w-full max-w-2xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">🔗 แชร์ลิงค์</h2>
@@ -179,7 +181,7 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-h-[60vh] overflow-y-auto p-4">
           {activeTab === 'create' && (
             <>
               {createdLink ? (
@@ -368,7 +370,6 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
               )}
             </div>
           )}
-        </div>
         </div>
       </div>
     </div>
