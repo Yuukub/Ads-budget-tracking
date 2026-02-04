@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ShareLink, ShareLinkFormData, ShareAccessLog } from '../../types';
 import { shareApi } from '../../api/api';
 import { Button } from '../ui/Button';
@@ -150,8 +151,8 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div
         className="bg-card border border-border rounded-xl w-full max-w-2xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -372,6 +373,7 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
