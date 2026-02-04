@@ -8,7 +8,7 @@ const router = Router();
 
 // Helper: Generate secure random token
 function generateToken(): string {
-  return crypto.randomBytes(24).toString('base64url');
+  return crypto.randomBytes(12).toString('base64url');
 }
 
 // Helper: Parse campaign activeDays
