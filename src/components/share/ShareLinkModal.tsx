@@ -4,7 +4,7 @@ import { ShareLink, ShareLinkFormData, ShareAccessLog } from '../../types';
 import { shareApi } from '../../api/api';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { X, Copy, Check, Trash2, Eye, Link2, Clock, Key, Hash } from 'lucide-react';
+import { X, Copy, Check, Trash2, Eye, Link2, Clock, Key, Hash, Pencil } from 'lucide-react';
 
 interface ShareLinkModalProps {
   isOpen: boolean;
@@ -19,7 +19,8 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Create form state
+  // Create/Edit form state
+  const [editingLink, setEditingLink] = useState<ShareLink | null>(null);
   const [formData, setFormData] = useState<ShareLinkFormData>({
     name: '',
     pageType: 'all',
@@ -50,20 +51,41 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const link = await shareApi.create(formData);
-      setCreatedLink(link);
-      loadShareLinks();
+      if (editingLink) {
+        // Update existing link
+        const updated = await shareApi.update(editingLink.id, formData);
+        setShareLinks((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+        resetForm();
+        setActiveTab('manage');
+      } else {
+        // Create new link
+        const link = await shareApi.create(formData);
+        setCreatedLink(link);
+        loadShareLinks();
+      }
     } catch (error) {
-      console.error('Failed to create share link:', error);
-      alert('ไม่สามารถสร้างลิงค์ได้');
+      console.error('Failed to save share link:', error);
+      alert('ไม่สามารถบันทึกข้อมูลได้');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEdit = (link: ShareLink) => {
+    setEditingLink(link);
+    setFormData({
+      name: link.name || '',
+      pageType: link.pageType as 'home' | 'budget' | 'all',
+      expiresAt: link.expiresAt ? new Date(link.expiresAt).toISOString().split('T')[0] : null,
+      password: null, // Don't fill password, leave blank for unchanged
+      maxViews: link.maxViews || null,
+    });
+    setActiveTab('create');
   };
 
   const handleDelete = async (id: string) => {
@@ -72,6 +94,9 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
     try {
       await shareApi.delete(id);
       setShareLinks((prev) => prev.filter((link) => link.id !== id));
+      if (editingLink?.id === id) {
+        resetForm();
+      }
     } catch (error) {
       console.error('Failed to delete share link:', error);
       alert('ไม่สามารถลบลิงค์ได้');
@@ -146,6 +171,7 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
       password: null,
       maxViews: null,
     });
+    setEditingLink(null);
     setCreatedLink(null);
   };
 
@@ -159,7 +185,9 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">🔗 แชร์ลิงค์</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            {editingLink ? '✏️ แก้ไขลิงค์' : '🔗 แชร์ลิงค์'}
+          </h2>
           <button onClick={onClose} className="p-1 hover:bg-muted rounded-lg">
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
@@ -171,10 +199,10 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
             onClick={() => { setActiveTab('create'); resetForm(); }}
             className={`flex-1 py-2 text-sm font-medium ${activeTab === 'create' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
           >
-            สร้างลิงค์ใหม่
+            {editingLink ? 'แก้ไขข้อมูล' : 'สร้างลิงค์ใหม่'}
           </button>
           <button
-            onClick={() => setActiveTab('manage')}
+            onClick={() => { setActiveTab('manage'); resetForm(); }}
             className={`flex-1 py-2 text-sm font-medium ${activeTab === 'manage' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
           >
             จัดการลิงค์ ({shareLinks.length})
@@ -206,8 +234,8 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
                   </div>
                 </div>
               ) : (
-                // Create form
-                <form onSubmit={handleCreate} className="space-y-4">
+                // Create/Edit form
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
                       ชื่อลิงค์ (ไม่บังคับ)
@@ -251,13 +279,13 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">
                       <Key className="w-4 h-4 inline mr-1" />
-                      รหัสผ่าน (ไม่บังคับ)
+                      {editingLink ? 'เปลี่ยนรหัสผ่าน (ปล่อยว่างถ้าไม่เปลี่ยน)' : 'รหัสผ่าน (ไม่บังคับ)'}
                     </label>
                     <Input
                       type="text"
                       value={formData.password || ''}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value || null })}
-                      placeholder="ปล่อยว่างถ้าไม่ต้องการรหัสผ่าน"
+                      placeholder={editingLink ? 'พิมพ์รหัสใหม่เพื่อเปลี่ยน' : 'ปล่อยว่างถ้าไม่ต้องการรหัสผ่าน'}
                     />
                   </div>
 
@@ -275,10 +303,17 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    <Link2 className="w-4 h-4 mr-2" />
-                    {isLoading ? 'กำลังสร้าง...' : 'สร้างลิงค์'}
-                  </Button>
+                  <div className="flex gap-2">
+                    {editingLink && (
+                      <Button type="button" variant="outline" className="w-full" onClick={() => { resetForm(); setActiveTab('manage'); }}>
+                        ยกเลิก
+                      </Button>
+                    )}
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      <Link2 className="w-4 h-4 mr-2" />
+                      {isLoading ? 'กำลังบันทึก...' : editingLink ? 'บันทึกการแก้ไข' : 'สร้างลิงค์'}
+                    </Button>
+                  </div>
                 </form>
               )}
             </>
@@ -320,6 +355,13 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
                             ) : (
                               <Copy className="w-4 h-4 text-muted-foreground" />
                             )}
+                          </button>
+                          <button
+                            onClick={() => handleEdit(link)}
+                            className="p-2 hover:bg-muted rounded-lg"
+                            title="แก้ไข"
+                          >
+                            <Pencil className="w-4 h-4 text-muted-foreground" />
                           </button>
                           <button
                             onClick={() => loadAccessLogs(link.id)}
