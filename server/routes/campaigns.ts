@@ -78,13 +78,13 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Client not found' });
     }
 
-    // Check available budget
+    // Check available budget (round to 2 decimal places to avoid floating point errors)
     const allocated = client.campaigns.reduce((sum, c) => sum + c.budget, 0);
-    const available = client.totalBudget - allocated;
+    const available = Math.round((client.totalBudget - allocated) * 100) / 100;
 
     if (budget > available) {
       return res.status(400).json({
-        error: `Budget exceeds available amount. Available: ${available}`,
+        error: `Budget exceeds available amount. Available: ${available.toFixed(2)}`,
       });
     }
 
@@ -155,11 +155,12 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         const otherCampaignsBudget = existingCampaign.client.campaigns
           .filter(c => c.id !== campaignId)
           .reduce((sum, c) => sum + c.budget, 0);
-        const available = existingCampaign.client.totalBudget - otherCampaignsBudget;
+        // Round to 2 decimal places to avoid floating point errors
+        const available = Math.round((existingCampaign.client.totalBudget - otherCampaignsBudget) * 100) / 100;
 
         if (budget > available) {
           return res.status(400).json({
-            error: `Budget exceeds available amount. Available: ${available}`,
+            error: `Budget exceeds available amount. Available: ${available.toFixed(2)}`,
           });
         }
       }

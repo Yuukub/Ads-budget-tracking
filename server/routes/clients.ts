@@ -49,16 +49,17 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     });
 
     // Calculate allocated budget for each client (เฉพาะแคมเปญที่ไม่ archived)
+    // Round to 2 decimal places to avoid floating point errors
     const clientsWithStats = clients.map(client => {
       const campaigns = client.campaigns.map(parseCampaignActiveDays);
-      const allocated = campaigns.reduce((sum, c) => sum + c.budget, 0);
-      const totalSpent = campaigns.reduce((sum, c) => sum + c.spent, 0);
-      const effectiveBudget = client.totalBudget + client.carryOver; // งบที่ใช้ได้จริง
+      const allocated = Math.round(campaigns.reduce((sum, c) => sum + c.budget, 0) * 100) / 100;
+      const totalSpent = Math.round(campaigns.reduce((sum, c) => sum + c.spent, 0) * 100) / 100;
+      const effectiveBudget = Math.round((client.totalBudget + client.carryOver) * 100) / 100; // งบที่ใช้ได้จริง
       return {
         ...client,
         campaigns,
         allocated,
-        unallocated: effectiveBudget - allocated,
+        unallocated: Math.round((effectiveBudget - allocated) * 100) / 100,
         totalSpent,
         effectiveBudget,
       };
@@ -111,15 +112,16 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     const campaigns = client.campaigns.map(parseCampaignActiveDays);
-    const allocated = campaigns.reduce((sum, c) => sum + c.budget, 0);
-    const totalSpent = campaigns.reduce((sum, c) => sum + c.spent, 0);
-    const effectiveBudget = client.totalBudget + client.carryOver;
+    // Round to 2 decimal places to avoid floating point errors
+    const allocated = Math.round(campaigns.reduce((sum, c) => sum + c.budget, 0) * 100) / 100;
+    const totalSpent = Math.round(campaigns.reduce((sum, c) => sum + c.spent, 0) * 100) / 100;
+    const effectiveBudget = Math.round((client.totalBudget + client.carryOver) * 100) / 100;
 
     res.json({
       ...client,
       campaigns,
       allocated,
-      unallocated: effectiveBudget - allocated,
+      unallocated: Math.round((effectiveBudget - allocated) * 100) / 100,
       totalSpent,
       effectiveBudget,
     });
@@ -356,12 +358,13 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     // Validate total budget is not less than allocated (เฉพาะ active campaigns)
-    const allocated = existingClient.campaigns.reduce((sum, c) => sum + c.budget, 0);
-    const effectiveBudget = (totalBudget !== undefined ? totalBudget : existingClient.totalBudget) + existingClient.carryOver;
+    // Round to 2 decimal places to avoid floating point errors
+    const allocated = Math.round(existingClient.campaigns.reduce((sum, c) => sum + c.budget, 0) * 100) / 100;
+    const effectiveBudget = Math.round(((totalBudget !== undefined ? totalBudget : existingClient.totalBudget) + existingClient.carryOver) * 100) / 100;
 
     if (totalBudget !== undefined && effectiveBudget < allocated) {
       return res.status(400).json({
-        error: `งบที่ใช้ได้ (${effectiveBudget}) น้อยกว่างบที่จัดสรรไปแล้ว (${allocated})`,
+        error: `งบที่ใช้ได้ (${effectiveBudget.toFixed(2)}) น้อยกว่างบที่จัดสรรไปแล้ว (${allocated.toFixed(2)})`,
       });
     }
 
