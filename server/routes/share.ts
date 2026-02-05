@@ -241,7 +241,9 @@ router.get('/:token/validate', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'ลิงค์นี้หมดอายุแล้ว' });
     }
 
-    if (shareLink.maxViews && shareLink.viewCount >= shareLink.maxViews) {
+    // Only check maxViews for new sessions (skipLog !== 'true')
+    // This allows navigation within the same session after the view was counted
+    if (skipLog !== 'true' && shareLink.maxViews && shareLink.viewCount >= shareLink.maxViews) {
       return res.status(403).json({ error: 'ลิงค์นี้ถูกดูครบจำนวนครั้งแล้ว' });
     }
 
