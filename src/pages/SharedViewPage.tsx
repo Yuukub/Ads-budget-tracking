@@ -58,6 +58,12 @@ export function SharedViewPage() {
         sessionStorage.setItem(sessionKey, 'true');
       }
 
+      // Redirect to budget page if only budget access is allowed
+      if (validation.pageType === 'budget') {
+        navigate(`/s/${token}/budget`, { replace: true });
+        return;
+      }
+
       // Check if this page is allowed
       if (!['home', 'all'].includes(validation.pageType)) {
         setError('ลิงค์นี้ไม่อนุญาตให้ดูหน้านี้');
