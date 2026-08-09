@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { shareApi } from '../api/api';
-import { BudgetLog } from '../types';
+import { BudgetLog, BudgetPeriod } from '../types';
 import { Button } from '../components/ui/Button';
+import { BudgetPeriodFilter } from '../components/budget/BudgetPeriodFilter';
 import { formatCurrency } from '../utils/helpers';
+import { getBudgetMonthRange, getBudgetPeriodFromSearchParams, getBudgetPeriodLabel, getBudgetPeriodSearchParams } from '../utils/budgetPeriod';
 
 interface ShareInfo {
   valid: boolean;
@@ -15,6 +17,10 @@ interface ShareInfo {
 export function SharedBudgetPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const periodQuery = searchParams.toString();
+  const period = useMemo(() => getBudgetPeriodFromSearchParams(searchParams), [searchParams, periodQuery]);
+  const monthRange = useMemo(() => getBudgetMonthRange(period), [period]);
 
   const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
   const [budgetLogs, setBudgetLogs] = useState<BudgetLog[]>([]);
@@ -22,20 +28,10 @@ export function SharedBudgetPage() {
   const [error, setError] = useState<string | null>(null);
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [password, setPassword] = useState('');
+  const [authenticatedPassword, setAuthenticatedPassword] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // Validate token and load data
-  useEffect(() => {
-    if (!token) {
-      setError('ไม่พบลิงค์');
-      setIsLoading(false);
-      return;
-    }
-
-    validateAndLoad();
-  }, [token]);
-
-  const validateAndLoad = async (pwd?: string) => {
+  const validateAndLoad = useCallback(async (pwd?: string) => {
     if (!token) return;
 
     try {
@@ -51,6 +47,7 @@ export function SharedBudgetPage() {
       const validation = await shareApi.validate(token, pwd, alreadyLogged);
       setShareInfo(validation);
       setRequiresPassword(false);
+      if (pwd) setAuthenticatedPassword(pwd);
 
       // Mark as logged in session storage
       if (!alreadyLogged) {
@@ -65,7 +62,7 @@ export function SharedBudgetPage() {
       }
 
       // Load data
-      const response = await shareApi.getData(token, 'budget', pwd);
+      const response = await shareApi.getData(token, 'budget', pwd, monthRange);
       setBudgetLogs(response.data as BudgetLog[]);
     } catch (err: unknown) {
       const error = err as { response?: { status: number; data?: { requiresPassword?: boolean; error?: string } } };
@@ -80,11 +77,26 @@ export function SharedBudgetPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, monthRange]);
+
+  // Validate token and load data
+  useEffect(() => {
+    if (!token) {
+      setError('ไม่พบลิงค์');
+      setIsLoading(false);
+      return;
+    }
+
+    void validateAndLoad(authenticatedPassword);
+  }, [token, validateAndLoad, authenticatedPassword]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     validateAndLoad(password);
+  };
+
+  const handlePeriodChange = (nextPeriod: BudgetPeriod) => {
+    setSearchParams(getBudgetPeriodSearchParams(nextPeriod));
   };
 
   // Split logs by type
@@ -191,10 +203,15 @@ export function SharedBudgetPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
+        <div className="mb-6 space-y-3">
+          <p className="text-sm text-muted-foreground">กำลังแสดง: {getBudgetPeriodLabel(period)}</p>
+          <BudgetPeriodFilter period={period} onChange={handlePeriodChange} />
+        </div>
+
         {/* Summary Cards - 4 cards like original */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-card p-4 rounded-lg border border-border">
-            <div className="text-sm text-muted-foreground">ยอดรับทั้งหมด</div>
+            <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
           </div>
           <div className="bg-card p-4 rounded-lg border border-border">

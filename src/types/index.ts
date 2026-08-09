@@ -184,6 +184,18 @@ export interface BudgetLogFormData {
   note?: string;
 }
 
+export type BudgetPeriodMode = 'all' | 'month' | 'range';
+
+export type BudgetPeriod =
+  | { mode: 'all' }
+  | { mode: 'month'; month: string }
+  | { mode: 'range'; from: string; to: string };
+
+export interface BudgetMonthRange {
+  startMonth: string;
+  endMonth: string;
+}
+
 // Share Link Types
 export type SharePageType = 'home' | 'budget' | 'all';
 
