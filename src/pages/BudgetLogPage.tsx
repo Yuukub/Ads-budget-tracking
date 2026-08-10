@@ -165,28 +165,6 @@ export function BudgetLogPage() {
                 <BudgetPeriodFilter period={period} onChange={handlePeriodChange} />
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">งบ Ads ที่ใช้ได้ (Usable)</div>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalUsable)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">เบิกเติมแล้ว (Top-up)</div>
-                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalTopup)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">คงเหลือเบิก (Remaining)</div>
-                    <div className={`text-2xl font-bold ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}>
-                        {formatCurrency(remainingUsable)}
-                    </div>
-                </div>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: Received Logs */}
                 <div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -313,6 +291,28 @@ export function BudgetLogPage() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
+                </div>
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">งบ Ads ที่ใช้ได้ (Usable)</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalUsable)}</div>
+                </div>
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">เบิกเติมแล้ว (Top-up)</div>
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalTopup)}</div>
+                </div>
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">คงเหลือเบิก (Remaining)</div>
+                    <div className={`text-2xl font-bold ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}>
+                        {formatCurrency(remainingUsable)}
                     </div>
                 </div>
             </div>
