@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { BudgetMonthRangeError, parseBudgetMonthRange } from '../lib/budgetPeriod.js';
 
 const router = Router();
 
@@ -405,9 +406,13 @@ router.get('/:token/data', async (req: Request, res: Response) => {
     }
 
     if (requestedPage === 'budget' && ['budget', 'all'].includes(shareLink.pageType)) {
+      const range = parseBudgetMonthRange(req.query.startMonth, req.query.endMonth);
       // Get budget logs
       const budgetLogs = await prisma.budgetLog.findMany({
-        where: { userId },
+        where: {
+          userId,
+          ...(range ? { date: { gte: range.start, lt: range.end } } : {}),
+        },
         orderBy: { date: 'asc' },
       });
 
@@ -420,6 +425,9 @@ router.get('/:token/data', async (req: Request, res: Response) => {
 
     return res.status(403).json({ error: 'ลิงค์นี้ไม่อนุญาตให้ดูหน้านี้' });
   } catch (error) {
+    if (error instanceof BudgetMonthRangeError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Get shared data error:', error);
     res.status(500).json({ error: 'Server error' });
   }

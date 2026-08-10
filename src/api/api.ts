@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse } from '../types';
 
 const API_URL = '/api';
 
@@ -203,8 +203,13 @@ export const adminApi = {
 
 // Budget API
 export const budgetApi = {
-  getAll: async () => {
-    const { data } = await api.get<BudgetLog[]>('/budget');
+  getAll: async (range?: BudgetMonthRange) => {
+    const params = new URLSearchParams();
+    if (range) {
+      params.set('startMonth', range.startMonth);
+      params.set('endMonth', range.endMonth);
+    }
+    const { data } = await api.get<BudgetLog[]>(`/budget${params.size ? `?${params.toString()}` : ''}`);
     return data;
   },
 
@@ -256,9 +261,13 @@ export const shareApi = {
     return data;
   },
 
-  getData: async (token: string, page: 'home' | 'budget', password?: string) => {
+  getData: async (token: string, page: 'home' | 'budget', password?: string, range?: BudgetMonthRange) => {
     const params = new URLSearchParams({ page });
     if (password) params.append('password', password);
+    if (range) {
+      params.set('startMonth', range.startMonth);
+      params.set('endMonth', range.endMonth);
+    }
     const { data } = await api.get<SharedDataResponse>(`/share/${token}/data?${params.toString()}`);
     return data;
   },

@@ -1,18 +1,26 @@
 import express from 'express';
 import prisma from '../lib/prisma.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { BudgetMonthRangeError, parseBudgetMonthRange } from '../lib/budgetPeriod.js';
 
 const router = express.Router();
 
 // Get all logs for the authenticated user
 router.get('/', authMiddleware, async (req: any, res) => {
     try {
+        const range = parseBudgetMonthRange(req.query.startMonth, req.query.endMonth);
         const logs = await prisma.budgetLog.findMany({
-            where: { userId: req.userId },
+            where: {
+                userId: req.userId,
+                ...(range ? { date: { gte: range.start, lt: range.end } } : {}),
+            },
             orderBy: { date: 'desc' },
         });
         res.json(logs);
     } catch (error) {
+        if (error instanceof BudgetMonthRangeError) {
+            return res.status(400).json({ error: error.message });
+        }
         console.error('Error fetching budget logs:', error);
         res.status(500).json({ error: 'Failed to fetch budget logs' });
     }

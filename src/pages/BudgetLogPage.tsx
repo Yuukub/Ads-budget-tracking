@@ -1,15 +1,22 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { ExportButton, ExportColumn } from '../components/ui/ExportButton';
+import { BudgetPeriodFilter } from '../components/budget/BudgetPeriodFilter';
 import { budgetApi } from '../api/api';
-import { BudgetLog, BudgetLogFormData } from '../types';
+import { BudgetLog, BudgetLogFormData, BudgetPeriod } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
+import { getBudgetMonthRange, getBudgetPeriodFromSearchParams, getBudgetPeriodLabel, getBudgetPeriodSearchParams } from '../utils/budgetPeriod';
 
 export function BudgetLogPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const periodQuery = searchParams.toString();
+    const period = useMemo(() => getBudgetPeriodFromSearchParams(searchParams), [searchParams, periodQuery]);
+    const monthRange = useMemo(() => getBudgetMonthRange(period), [period]);
     const [logs, setLogs] = useState<BudgetLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,21 +44,25 @@ export function BudgetLogPage() {
         { key: 'note', label: 'Note', formatter: (val) => val || '' },
     ];
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await budgetApi.getAll();
+            const data = await budgetApi.getAll(monthRange);
             setLogs(data);
         } catch (error) {
             console.error('Failed to fetch budget logs:', error);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [monthRange]);
 
     useEffect(() => {
-        fetchLogs();
-    }, []);
+        void fetchLogs();
+    }, [fetchLogs]);
+
+    const handlePeriodChange = (nextPeriod: BudgetPeriod) => {
+        setSearchParams(getBudgetPeriodSearchParams(nextPeriod));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -136,38 +147,22 @@ export function BudgetLogPage() {
 
     return (
         <Layout>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-xl font-bold text-foreground">📑 บัญชีงบประมาณ (Budget Ledger)</h1>
-                <div className="flex gap-2">
-                    <ExportButton
-                        data={logs}
-                        columns={exportColumns}
-                        filename={`budget_log_${new Date().toISOString().split('T')[0]}`}
-                    />
-                    <Button onClick={() => setIsModalOpen(true)}>+ เพิ่มรายการ</Button>
-                </div>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">ยอดรับทั้งหมด</div>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">งบ Ads ที่ใช้ได้ (Usable)</div>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalUsable)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">เบิกเติมแล้ว (Top-up)</div>
-                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalTopup)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">คงเหลือเบิก (Remaining)</div>
-                    <div className={`text-2xl font-bold ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}>
-                        {formatCurrency(remainingUsable)}
+            <div className="mb-6 space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-xl font-bold text-foreground">📑 บัญชีงบประมาณ (Budget Ledger)</h1>
+                        <p className="text-sm text-muted-foreground">กำลังแสดง: {getBudgetPeriodLabel(period)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <ExportButton
+                            data={logs}
+                            columns={exportColumns}
+                            filename={`budget_log_${period.mode === 'all' ? 'all' : getBudgetPeriodLabel(period).replaceAll(' ', '_')}`}
+                        />
+                        <Button onClick={() => setIsModalOpen(true)}>+ เพิ่มรายการ</Button>
                     </div>
                 </div>
+                <BudgetPeriodFilter period={period} onChange={handlePeriodChange} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -296,6 +291,28 @@ export function BudgetLogPage() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
+                </div>
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">งบ Ads ที่ใช้ได้ (Usable)</div>
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalUsable)}</div>
+                </div>
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">เบิกเติมแล้ว (Top-up)</div>
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalTopup)}</div>
+                </div>
+                <div className="bg-card p-4 rounded-lg border border-border">
+                    <div className="text-sm text-muted-foreground">คงเหลือเบิก (Remaining)</div>
+                    <div className={`text-2xl font-bold ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}>
+                        {formatCurrency(remainingUsable)}
                     </div>
                 </div>
             </div>
