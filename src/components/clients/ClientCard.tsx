@@ -21,6 +21,10 @@ interface ClientCardProps {
   onArchiveCampaign?: (campaign: Campaign) => void;
   onViewHistory?: (client: Client) => void;
   onResetBudget?: (client: Client) => void;
+  onPause?: (client: Client) => void;
+  onRollover?: (client: Client) => void;
+  onPauseCampaign?: (campaign: Campaign) => void;
+  onCancelPause?: (pauseId: string) => void;
   readOnly?: boolean;
 }
 
@@ -35,6 +39,10 @@ export function ClientCard({
   onArchiveCampaign,
   onViewHistory,
   onResetBudget,
+  onPause,
+  onRollover,
+  onPauseCampaign,
+  onCancelPause,
   readOnly = false,
 }: ClientCardProps) {
   // คำนวณเปอร์เซ็นต์งบที่ใช้ไปแล้ว (จาก effectiveBudget)
@@ -80,12 +88,20 @@ export function ClientCard({
               <Button variant="primary" size="sm" onClick={() => onAddCampaign(client)} className="flex-1 sm:flex-none justify-center">
                 + แคมเปญ
               </Button>
+              {onPause && <Button variant="soft-warning" size="sm" onClick={() => onPause(client)} className="flex-1 sm:flex-none justify-center">⏸️ พักแอด</Button>}
+              {onRollover && <Button variant={client.isRolloverDue ? 'soft-warning' : 'soft-purple'} size="sm" onClick={() => onRollover(client)} className="flex-1 sm:flex-none justify-center">🔄 เปิดรอบใหม่</Button>}
             </div>
           )}
         </div>
 
         {/* Budget Summary */}
         <div className="space-y-3">
+          {client.budgetPeriodMonth && (
+            <div className={`rounded-lg px-3 py-2 text-sm ${client.isRolloverDue ? 'bg-amber-50 text-amber-700' : 'bg-muted text-muted-foreground'}`}>
+              รอบงบ {client.budgetPeriodMonth.slice(0, 7)} สิ้นสุด {client.budgetPeriodEndsOn ? new Date(client.budgetPeriodEndsOn).toLocaleDateString('th-TH') : '-'}
+              {client.isRolloverDue ? ' — ถึงเวลาตรวจและเปิดรอบใหม่' : ''}
+            </div>
+          )}
           {/* งบประมาณ */}
           <div className="space-y-1">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
@@ -184,6 +200,8 @@ export function ClientCard({
               onEdit={onEditCampaign}
               onDelete={onDeleteCampaign}
               onArchive={onArchiveCampaign}
+              onPause={onPauseCampaign}
+              onCancelPause={onCancelPause}
               readOnly={readOnly}
             />
           ))

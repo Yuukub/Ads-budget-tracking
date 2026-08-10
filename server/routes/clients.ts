@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest, adminCheckMiddleware } from '../middleware/auth.js';
+import { CAMPAIGN_CYCLES_ENABLED, bangkokToday, createRolloverNotification, getCycleClients, monthEnd, monthStart, toClientCampaign } from '../lib/campaignCycles.js';
 
 const router = Router();
 
@@ -35,6 +36,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       }
 
       effectiveUserId = targetUserId;
+    }
+
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      return res.json(await getCycleClients(effectiveUserId));
     }
 
     const clients = await prisma.client.findMany({
@@ -92,6 +97,12 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
       }
 
       effectiveUserId = targetUserId;
+    }
+
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      const client = (await getCycleClients(effectiveUserId)).find(item => item.id === parseInt(req.params.id as string));
+      if (!client) return res.status(404).json({ error: 'Client not found' });
+      return res.json(client);
     }
 
     const client = await prisma.client.findFirst({
@@ -155,6 +166,24 @@ router.get('/:id/history', async (req: AuthRequest, res: Response) => {
       effectiveUserId = targetUserId;
     }
 
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      const client = await prisma.client.findFirst({ where: { id: clientId, userId: effectiveUserId } });
+      if (!client) return res.status(404).json({ error: 'Client not found' });
+      const periods = await prisma.campaignPeriod.findMany({
+        where: { campaignProfile: { clientId }, status: 'CLOSED' },
+        include: {
+          campaignProfile: { include: { pauseCampaigns: { include: { pauseEvent: true } } } },
+          clientBudgetPeriod: true,
+        },
+        orderBy: { closedAt: 'desc' },
+      });
+      return res.json(periods.map(period => toClientCampaign(
+        period.campaignProfile,
+        period,
+        period.campaignProfile.pauseCampaigns.map(link => link.pauseEvent),
+      )));
+    }
+
     // Check ownership
     const client = await prisma.client.findFirst({
       where: { id: clientId, userId: effectiveUserId },
@@ -207,6 +236,10 @@ router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
       }
 
       effectiveUserId = targetUserId;
+    }
+
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      return res.status(409).json({ error: 'ใช้ “ตรวจและเปิดรอบใหม่” เพื่อจัดการงบรอบเดือน' });
     }
 
     // Check ownership
@@ -301,6 +334,14 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       },
     });
 
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      const start = monthStart(bangkokToday());
+      const period = await prisma.clientBudgetPeriod.create({
+        data: { clientId: client.id, month: start, baseBudget: client.totalBudget, carryIn: 0, startsOn: start, endsOn: monthEnd(start) },
+      });
+      await createRolloverNotification(client.userId, period);
+    }
+
     res.status(201).json({
       ...client,
       allocated: 0,
@@ -338,6 +379,37 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       }
 
       effectiveUserId = targetUserId;
+    }
+
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      const existing = await prisma.client.findFirst({ where: { id: clientId, userId: effectiveUserId } });
+      if (!existing) return res.status(404).json({ error: 'Client not found' });
+      const period = await prisma.clientBudgetPeriod.findFirst({
+        where: { clientId, status: 'OPEN' },
+        include: { campaigns: { where: { status: 'OPEN' } } },
+        orderBy: { month: 'desc' },
+      });
+      const nextBudget = totalBudget === undefined ? (period?.baseBudget ?? existing.totalBudget) : Number(totalBudget);
+      const allocated = period?.campaigns.reduce((sum, campaign) => sum + campaign.budget, 0) ?? 0;
+      const effectiveBudget = nextBudget + (period?.carryIn ?? 0);
+      if (!Number.isFinite(nextBudget) || effectiveBudget < allocated) {
+        return res.status(400).json({ error: `งบที่ใช้ได้ (${effectiveBudget.toFixed(2)}) น้อยกว่างบที่จัดสรรไปแล้ว (${allocated.toFixed(2)})` });
+      }
+      await prisma.$transaction(async tx => {
+        await tx.client.update({
+          where: { id: clientId },
+          data: {
+            ...(name ? { name } : {}),
+            ...(logo !== undefined ? { logo: logo || null } : {}),
+            ...(totalBudget !== undefined ? { totalBudget: nextBudget } : {}),
+          },
+        });
+        if (period && totalBudget !== undefined) {
+          await tx.clientBudgetPeriod.update({ where: { id: period.id }, data: { baseBudget: nextBudget } });
+        }
+      });
+      const updated = (await getCycleClients(effectiveUserId)).find(item => item.id === clientId);
+      return res.json(updated);
     }
 
     // Check ownership

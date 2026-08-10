@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { BudgetMonthRangeError, parseBudgetMonthRange } from '../lib/budgetPeriod.js';
+import { CAMPAIGN_CYCLES_ENABLED, getCycleClients } from '../lib/campaignCycles.js';
 
 const router = Router();
 
@@ -370,6 +371,13 @@ router.get('/:token/data', async (req: Request, res: Response) => {
     const userId = shareLink.user.id;
 
     if (requestedPage === 'home' && ['home', 'all'].includes(shareLink.pageType)) {
+      if (CAMPAIGN_CYCLES_ENABLED) {
+        return res.json({
+          pageType: 'home',
+          ownerName: shareLink.user.name,
+          data: await getCycleClients(userId),
+        });
+      }
       // Get clients data
       const clients = await prisma.client.findMany({
         where: { userId },

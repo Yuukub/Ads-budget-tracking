@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Client, Campaign, ClientFormData, CampaignFormData } from '../types';
-import { clientsApi, campaignsApi, clientHistoryApi } from '../api/api';
+import { Client, Campaign, ClientFormData, CampaignFormData, PauseFormData, RolloverFormData, AppNotification } from '../types';
+import { clientsApi, campaignsApi, clientHistoryApi, notificationsApi, pauseApi } from '../api/api';
 import { Layout } from '../components/layout/Layout';
 import { ClientCard } from '../components/clients/ClientCard';
 import { ClientForm } from '../components/clients/ClientForm';
@@ -10,6 +10,8 @@ import { UpdateSpentForm } from '../components/campaigns/UpdateSpentForm';
 import { NoBudgetWarning } from '../components/clients/NoBudgetWarning';
 import { HistoryModal } from '../components/clients/HistoryModal';
 import { ResetBudgetModal } from '../components/clients/ResetBudgetModal';
+import { RolloverModal } from '../components/clients/RolloverModal';
+import { PauseModal } from '../components/campaigns/PauseModal';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -22,7 +24,7 @@ const getLogoUrl = (logoPath: string | null) => {
   return `http://localhost:3001${logoPath}`;
 };
 
-type ModalType = 'none' | 'addClient' | 'editClient' | 'addCampaign' | 'editCampaign' | 'updateSpent' | 'noBudget' | 'selectClientToDelete' | 'deleteClient' | 'deleteCampaign' | 'history' | 'resetBudget';
+type ModalType = 'none' | 'addClient' | 'editClient' | 'addCampaign' | 'editCampaign' | 'updateSpent' | 'noBudget' | 'selectClientToDelete' | 'deleteClient' | 'deleteCampaign' | 'history' | 'resetBudget' | 'pauseClient' | 'pauseCampaign' | 'rollover';
 
 interface HomePageProps {
   adminMode?: boolean;
@@ -44,6 +46,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
   // History state
   const [historyData, setHistoryData] = useState<Campaign[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   // Delete options
   const [deleteAllHistory, setDeleteAllHistory] = useState(false);
@@ -61,6 +64,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
 
   useEffect(() => {
     fetchClients();
+    notificationsApi.getAll().then(setNotifications).catch(() => setNotifications([]));
   }, []);
 
   const closeModal = () => {
@@ -212,6 +216,63 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
     }
   };
 
+  const handlePauseClient = async (data: PauseFormData) => {
+    if (!selectedClient) return;
+    setIsSubmitting(true);
+    try {
+      await pauseApi.createForClient(selectedClient.id, data);
+      await fetchClients();
+      await notificationsApi.getAll().then(setNotifications);
+      closeModal();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'เกิดข้อผิดพลาดในการบันทึกช่วงพัก');
+    } finally { setIsSubmitting(false); }
+  };
+
+  const handlePauseCampaign = async (data: PauseFormData) => {
+    if (!selectedCampaign) return;
+    setIsSubmitting(true);
+    try {
+      await pauseApi.createForCampaign(selectedCampaign.id, data);
+      await fetchClients();
+      await notificationsApi.getAll().then(setNotifications);
+      closeModal();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'เกิดข้อผิดพลาดในการบันทึกช่วงพัก');
+    } finally { setIsSubmitting(false); }
+  };
+
+  const handleRollover = async (data: RolloverFormData) => {
+    if (!selectedClient) return;
+    setIsSubmitting(true);
+    try {
+      await clientHistoryApi.rollover(selectedClient.id, data);
+      await fetchClients();
+      await notificationsApi.getAll().then(setNotifications);
+      closeModal();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'ไม่สามารถเปิดรอบใหม่ได้');
+    } finally { setIsSubmitting(false); }
+  };
+
+  const handleCancelPause = async (pauseId: string) => {
+    if (!confirm('ต้องการยกเลิกการพักแอดนี้หรือไม่? ประวัติจะยังถูกเก็บไว้')) return;
+    try {
+      await pauseApi.cancel(pauseId);
+      await fetchClients();
+      await notificationsApi.getAll().then(setNotifications);
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'ไม่สามารถยกเลิกการพักได้');
+    }
+  };
+
+  const markNotificationRead = async (notification: AppNotification) => {
+    try {
+      await notificationsApi.markRead(notification.id);
+      setNotifications(previous => previous.map(item => item.id === notification.id ? { ...item, isRead: true } : item));
+    } catch { /* notification state is non-critical */ }
+  };
+
   // Filter clients by search
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -261,6 +322,12 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
         return `📜 ประวัติแคมเปญ - ${selectedClient?.name}`;
       case 'resetBudget':
         return `🔄 เติมงบใหม่ - ${selectedClient?.name}`;
+      case 'pauseClient':
+        return `⏸️ พักแอด - ${selectedClient?.name}`;
+      case 'pauseCampaign':
+        return `⏸️ พักแอด - ${selectedCampaign?.name}`;
+      case 'rollover':
+        return `🔄 ตรวจและเปิดรอบใหม่ - ${selectedClient?.name}`;
       default:
         return '';
     }
@@ -291,6 +358,16 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
               ← Back to Admin Panel
             </Button>
           </div>
+        </div>
+      )}
+
+      {notifications.filter(notification => !notification.isRead).length > 0 && (
+        <div className="mb-6 space-y-2">
+          {notifications.filter(notification => !notification.isRead).slice(0, 3).map(notification => (
+            <button key={notification.id} onClick={() => markNotificationRead(notification)} className="flex w-full items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-800">
+              <span>🔔 <strong>{notification.title}</strong>{notification.message ? ` — ${notification.message}` : ''}</span><span className="ml-4 shrink-0 text-xs">อ่านแล้ว</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -405,6 +482,10 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
                 setModalType('deleteCampaign');
               }}
               onArchiveCampaign={handleArchiveCampaign}
+              onPause={(c) => { setSelectedClient(c); setModalType('pauseClient'); }}
+              onRollover={(c) => { setSelectedClient(c); setModalType('rollover'); }}
+              onPauseCampaign={(campaign) => { setSelectedCampaign(campaign); setSelectedClient(client); setModalType('pauseCampaign'); }}
+              onCancelPause={handleCancelPause}
               onViewHistory={handleViewHistory}
               onResetBudget={(c) => {
                 setSelectedClient(c);
@@ -457,6 +538,10 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
             isLoading={isSubmitting}
           />
         )}
+
+        {modalType === 'pauseClient' && selectedClient && <PauseModal targetName={`${selectedClient.name} (ทุกแคมเปญ)`} onSubmit={handlePauseClient} onCancel={closeModal} isLoading={isSubmitting} />}
+        {modalType === 'pauseCampaign' && selectedCampaign && <PauseModal targetName={selectedCampaign.name} onSubmit={handlePauseCampaign} onCancel={closeModal} isLoading={isSubmitting} />}
+        {modalType === 'rollover' && selectedClient && <RolloverModal client={selectedClient} onSubmit={handleRollover} onCancel={closeModal} isLoading={isSubmitting} />}
 
         {modalType === 'noBudget' && selectedClient && (
           <NoBudgetWarning

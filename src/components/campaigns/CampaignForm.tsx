@@ -8,6 +8,11 @@ import { cn } from '../../lib/utils';
 // ลำดับวันสำหรับแสดงผล
 const DAYS_ORDER: DayOfWeek[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
+function endOfCurrentMonth(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+}
+
 interface CampaignFormProps {
   campaign?: Campaign;
   client: Client;
@@ -20,7 +25,7 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
   const [name, setName] = useState(campaign?.name || '');
   const [budget, setBudget] = useState(campaign?.budget?.toString() || '');
   const [endDate, setEndDate] = useState(
-    campaign?.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : ''
+    campaign?.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : endOfCurrentMonth()
   );
   const [platform, setPlatform] = useState<Platform>(campaign?.platform || 'google_ads');
   const [googleAdsType, setGoogleAdsType] = useState<GoogleAdsType>(
@@ -37,7 +42,7 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
   const otherCampaignsBudget = client.campaigns
     .filter((c) => c.id !== campaign?.id)
     .reduce((sum, c) => sum + c.budget, 0);
-  const available = client.totalBudget - otherCampaignsBudget;
+  const available = client.effectiveBudget - otherCampaignsBudget;
   const minBudget = campaign?.spent || 0;
 
   useEffect(() => {
@@ -172,7 +177,7 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
       </div>
 
       <Input
-        label="วันหมดอายุ"
+        label="วันหมดอายุ (ค่าเริ่มต้น: สิ้นเดือน)"
         type="date"
         value={endDate}
         onChange={(e) => setEndDate(e.target.value)}

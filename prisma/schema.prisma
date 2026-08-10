@@ -20,6 +20,8 @@ model User {
   clients   Client[]
   budgetLogs BudgetLog[]
   shareLinks ShareLink[]
+  pauseEvents PauseEvent[] @relation("PauseCreatedBy")
+  notifications Notification[]
 
   @@map("users")
 }
@@ -49,6 +51,9 @@ model Client {
   updatedAt   DateTime   @updatedAt @map("updated_at")
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   campaigns   Campaign[]
+  campaignProfiles CampaignProfile[]
+  budgetPeriods ClientBudgetPeriod[]
+  pauseEvents PauseEvent[]
 
   @@map("clients")
 }
@@ -69,8 +74,121 @@ model Campaign {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   clientName    String?   @map("client_name") // เก็บชื่อลูกค้าไว้เมื่อลบลูกค้า
   client        Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  migratedPeriod CampaignPeriod? @relation("LegacyCampaignPeriod")
 
   @@map("campaigns")
+}
+
+// V2 campaign lifecycle. These tables are additive; Campaign remains the legacy record.
+model CampaignProfile {
+  id            Int      @id @default(autoincrement())
+  clientId      Int      @map("client_id")
+  name          String
+  platform      String
+  googleAdsType String?  @map("google_ads_type")
+  activeDays    String?  @map("active_days")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  periods       CampaignPeriod[]
+  pauseCampaigns PauseEventCampaign[]
+
+  @@index([clientId, isActive])
+  @@map("campaign_profiles")
+}
+
+model ClientBudgetPeriod {
+  id          Int      @id @default(autoincrement())
+  clientId    Int      @map("client_id")
+  month       DateTime @db.Date
+  baseBudget  Float    @map("base_budget")
+  carryIn     Float    @default(0) @map("carry_in")
+  carryOut    Float?   @map("carry_out")
+  status      String   @default("OPEN")
+  startsOn    DateTime @map("starts_on") @db.Date
+  endsOn      DateTime @map("ends_on") @db.Date
+  closedAt    DateTime? @map("closed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaigns   CampaignPeriod[]
+
+  @@unique([clientId, month])
+  @@index([clientId, status])
+  @@map("client_budget_periods")
+}
+
+model CampaignPeriod {
+  id                   Int      @id @default(autoincrement())
+  campaignProfileId    Int      @map("campaign_profile_id")
+  clientBudgetPeriodId Int      @map("client_budget_period_id")
+  legacyCampaignId     Int?     @unique @map("legacy_campaign_id")
+  budget               Float
+  spent                Float    @default(0)
+  startsOn             DateTime @map("starts_on") @db.Date
+  endDate              DateTime @map("end_date") @db.Date
+  status               String   @default("OPEN")
+  closedAt             DateTime? @map("closed_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  campaignProfile      CampaignProfile @relation(fields: [campaignProfileId], references: [id], onDelete: Cascade)
+  clientBudgetPeriod   ClientBudgetPeriod @relation(fields: [clientBudgetPeriodId], references: [id], onDelete: Cascade)
+  legacyCampaign       Campaign? @relation("LegacyCampaignPeriod", fields: [legacyCampaignId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignProfileId, clientBudgetPeriodId])
+  @@index([campaignProfileId, status])
+  @@index([clientBudgetPeriodId, status])
+  @@map("campaign_periods")
+}
+
+model PauseEvent {
+  id          String   @id @default(cuid())
+  clientId    Int      @map("client_id")
+  createdById Int      @map("created_by_id")
+  scope       String
+  startsOn    DateTime @map("starts_on") @db.Date
+  endsOn      DateTime @map("ends_on") @db.Date
+  reason      String   @default("ร้านปิด")
+  status      String   @default("ACTIVE")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("PauseCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  campaigns   PauseEventCampaign[]
+
+  @@index([clientId, status, startsOn, endsOn])
+  @@map("pause_events")
+}
+
+model PauseEventCampaign {
+  pauseEventId      String @map("pause_event_id")
+  campaignProfileId Int    @map("campaign_profile_id")
+  pauseEvent        PauseEvent @relation(fields: [pauseEventId], references: [id], onDelete: Cascade)
+  campaignProfile   CampaignProfile @relation(fields: [campaignProfileId], references: [id], onDelete: Cascade)
+
+  @@id([pauseEventId, campaignProfileId])
+  @@index([campaignProfileId])
+  @@map("pause_event_campaigns")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    Int      @map("user_id")
+  type      String
+  title     String
+  message   String
+  dueOn     DateTime @map("due_on") @db.Date
+  entityType String  @map("entity_type")
+  entityId  String   @map("entity_id")
+  dedupeKey String   @unique @map("dedupe_key")
+  isRead    Boolean  @default(false) @map("is_read")
+  resolvedAt DateTime? @map("resolved_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, dueOn])
+  @@map("notifications")
 }
 
 model BudgetLog {

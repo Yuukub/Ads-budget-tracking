@@ -13,6 +13,8 @@
     "preview": "vite preview",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:backfill-cycles": "tsx server/scripts/backfillCampaignCycles.ts",
+    "test:cycles": "tsx --test server/lib/campaignCycles.test.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },

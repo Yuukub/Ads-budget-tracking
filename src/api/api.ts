@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, AppNotification } from '../types';
 
 const API_URL = '/api';
 
@@ -114,6 +114,37 @@ export const clientHistoryApi = {
   resetBudget: async (clientId: number, newBudget: number, userId?: number) => {
     const params = userId ? `?userId=${userId}` : '';
     const { data } = await api.post<Client>(`/clients/${clientId}/reset-budget${params}`, { newBudget });
+    return data;
+  },
+
+  rollover: async (clientId: number, formData: RolloverFormData) => {
+    const { data } = await api.post(`/clients/${clientId}/periods/rollover`, formData);
+    return data;
+  },
+};
+
+export const pauseApi = {
+  createForClient: async (clientId: number, formData: PauseFormData) => {
+    const { data } = await api.post(`/clients/${clientId}/pauses`, formData);
+    return data;
+  },
+  createForCampaign: async (campaignId: number, formData: PauseFormData) => {
+    const { data } = await api.post(`/campaigns/${campaignId}/pauses`, formData);
+    return data;
+  },
+  cancel: async (pauseId: string) => {
+    const { data } = await api.patch(`/pause-events/${pauseId}/cancel`);
+    return data;
+  },
+};
+
+export const notificationsApi = {
+  getAll: async () => {
+    const { data } = await api.get<AppNotification[]>('/notifications');
+    return data;
+  },
+  markRead: async (id: string) => {
+    const { data } = await api.patch(`/notifications/${id}/read`);
     return data;
   },
 };

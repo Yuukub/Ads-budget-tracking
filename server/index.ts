@@ -12,6 +12,7 @@ import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
 import budgetRoutes from './routes/budget.js';
 import shareRoutes from './routes/share.js';
+import campaignCycleRoutes from './routes/campaignCycles.js';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api', campaignCycleRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/history', historyRoutes);

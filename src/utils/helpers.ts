@@ -1,4 +1,4 @@
-import { Campaign, CampaignStatus, CampaignWithStatus, Platform, GoogleAdsType, DayOfWeek, DEFAULT_ACTIVE_DAYS } from '../types';
+import { Campaign, CampaignStatus, CampaignWithStatus, Platform, GoogleAdsType, DayOfWeek, DEFAULT_ACTIVE_DAYS, PauseEvent } from '../types';
 
 export function calculateDaysRemaining(endDate: string): number {
   const end = new Date(endDate);
@@ -39,11 +39,11 @@ const dayLabels: Record<DayOfWeek, string> = {
 };
 
 // นับจำนวนวันที่จะเปิดแอดจากวันนี้ถึงวันหมดอายุ
-export function countActiveDays(endDate: string, activeDays: DayOfWeek[] | null): number {
+export function countActiveDays(endDate: string, activeDays: DayOfWeek[] | null, pauseEvents: PauseEvent[] = []): number {
   const days = activeDays || DEFAULT_ACTIVE_DAYS;
   if (days.length === 0) return 0;
 
-  const end = new Date(endDate);
+  const end = new Date(`${endDate.slice(0, 10)}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
@@ -56,7 +56,12 @@ export function countActiveDays(endDate: string, activeDays: DayOfWeek[] | null)
   const current = new Date(today);
 
   while (current <= end) {
-    if (activeDayNumbers.includes(current.getDay())) {
+    const dateKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+    const isPaused = pauseEvents.some(pause =>
+      pause.status !== 'CANCELLED' && pause.status !== 'cancelled'
+      && dateKey >= pause.startsOn.slice(0, 10) && dateKey <= pause.endsOn.slice(0, 10)
+    );
+    if (activeDayNumbers.includes(current.getDay()) && !isPaused) {
       count++;
     }
     current.setDate(current.getDate() + 1);
@@ -80,7 +85,7 @@ export { dayLabels };
 export function enrichCampaign(campaign: Campaign): CampaignWithStatus {
   const daysRemaining = calculateDaysRemaining(campaign.endDate);
   const remaining = campaign.budget - campaign.spent;
-  const activeRunDays = countActiveDays(campaign.endDate, campaign.activeDays);
+  const activeRunDays = countActiveDays(campaign.endDate, campaign.activeDays, campaign.pauseEvents);
   const recommendedDailyBudget = activeRunDays > 0 ? Math.round(remaining / activeRunDays) : 0;
 
   return {

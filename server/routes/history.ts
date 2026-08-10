@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { CAMPAIGN_CYCLES_ENABLED, toClientCampaign } from '../lib/campaignCycles.js';
 
 const router = Router();
 
@@ -11,6 +12,45 @@ router.use(authMiddleware);
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { clientId, platform, search } = req.query;
+
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      const where: any = {
+        status: 'CLOSED',
+        campaignProfile: { client: { userId: req.userId } },
+      };
+      if (clientId && clientId !== 'all') where.campaignProfile.clientId = parseInt(clientId as string);
+      if (platform && platform !== 'all') where.campaignProfile.platform = platform as string;
+      if (search) where.campaignProfile.name = { contains: search as string };
+
+      const periods = await prisma.campaignPeriod.findMany({
+        where,
+        include: {
+          campaignProfile: {
+            include: {
+              client: { select: { id: true, name: true, logo: true } },
+              pauseCampaigns: { include: { pauseEvent: true } },
+            },
+          },
+        },
+        orderBy: { closedAt: 'desc' },
+      });
+      const campaigns = periods.map(period => ({
+        ...toClientCampaign(period.campaignProfile, period, period.campaignProfile.pauseCampaigns.map(link => link.pauseEvent)),
+        client: period.campaignProfile.client,
+      }));
+      const clients = await prisma.client.findMany({
+        where: { userId: req.userId }, select: { id: true, name: true, logo: true },
+      });
+      const summary = campaigns.reduce((totals, campaign) => {
+        totals.totalBudget += campaign.budget;
+        totals.totalSpent += campaign.spent;
+        const remaining = campaign.budget - campaign.spent;
+        if (remaining >= 0) totals.totalRemaining += remaining;
+        else totals.totalOverspent += Math.abs(remaining);
+        return totals;
+      }, { totalCampaigns: campaigns.length, totalBudget: 0, totalSpent: 0, totalRemaining: 0, totalOverspent: 0 });
+      return res.json({ campaigns, clients, summary });
+    }
 
     // Get all clients belonging to the user
     const userClients = await prisma.client.findMany({
@@ -103,6 +143,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 // Delete history entry (archived campaign)
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    if (CAMPAIGN_CYCLES_ENABLED) {
+      return res.status(409).json({ error: 'ประวัติรอบแคมเปญ V2 เก็บไว้เป็น audit และไม่สามารถลบได้' });
+    }
     const campaignId = parseInt(req.params.id as string);
 
     // Get all clients belonging to the user

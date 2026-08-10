@@ -32,6 +32,11 @@ export interface Campaign {
   clientName: string | null; // เก็บชื่อลูกค้าเมื่อลบลูกค้าแล้ว
   createdAt: string;
   updatedAt: string;
+  /** Stable campaign profile id and current-cycle period id are the same as id in V2. */
+  periodId?: number;
+  pauseEvents?: PauseEvent[];
+  pauseStatus?: 'scheduled' | 'paused' | 'resumed' | null;
+  pauseReason?: string | null;
 }
 
 export interface CampaignWithStatus extends Campaign {
@@ -56,6 +61,50 @@ export interface Client {
   unallocated: number;
   totalSpent: number;
   effectiveBudget: number; // งบที่ใช้ได้จริง = totalBudget + carryOver
+  budgetPeriodId?: number;
+  budgetPeriodMonth?: string;
+  budgetPeriodEndsOn?: string;
+  isRolloverDue?: boolean;
+}
+
+export interface PauseEvent {
+  id: string;
+  scope: 'CLIENT' | 'CAMPAIGN';
+  startsOn: string;
+  endsOn: string;
+  reason: string | null;
+  status: 'ACTIVE' | 'CANCELLED' | 'scheduled' | 'paused' | 'resumed' | 'cancelled';
+  cancelledAt?: string | null;
+}
+
+export interface PauseFormData {
+  startsOn: string;
+  endsOn: string;
+  reason?: string;
+}
+
+export interface RolloverCampaignEntry {
+  campaignId: number;
+  continue: boolean;
+  budget: number;
+  endDate?: string;
+}
+
+export interface RolloverFormData {
+  month: string;
+  baseBudget: number;
+  campaigns: RolloverCampaignEntry[];
+}
+
+export interface AppNotification {
+  id: string;
+  type: 'PAUSE_START' | 'PAUSE_END' | 'ROLLOVER_REVIEW';
+  title: string;
+  message: string | null;
+  dueOn: string;
+  entityType: string;
+  entityId: string;
+  isRead: boolean;
 }
 
 export interface ClientFormData {
