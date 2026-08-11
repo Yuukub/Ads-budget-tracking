@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest, adminCheckMiddleware } from '../middleware/auth.js';
-import { CAMPAIGN_CYCLES_ENABLED, bangkokToday, createRolloverNotification, getCycleClients, monthEnd, monthStart, toClientCampaign } from '../lib/campaignCycles.js';
+import { CAMPAIGN_CYCLES_ENABLED, bangkokToday, createRolloverNotification, getCycleClients, initialBudgetPeriodData, monthEnd, monthStart, toClientCampaign } from '../lib/campaignCycles.js';
 
 const router = Router();
 
@@ -397,7 +397,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     if (CAMPAIGN_CYCLES_ENABLED) {
       const start = monthStart(bangkokToday());
       const period = await prisma.clientBudgetPeriod.create({
-        data: { clientId: client.id, month: start, baseBudget: client.totalBudget, carryIn: 0, startsOn: start, endsOn: monthEnd(start) },
+        data: initialBudgetPeriodData(client, start),
       });
       await createRolloverNotification(client.userId, period);
     }

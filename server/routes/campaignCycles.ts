@@ -7,6 +7,7 @@ import {
   budgetPeriodTotals,
   createPauseNotifications,
   createRolloverNotification,
+  initialBudgetPeriodData,
   monthEnd,
   monthStart,
   shiftEndDateToMonth,
@@ -38,6 +39,14 @@ async function getOwnedProfile(profileId: number, userId: number) {
   if (!profile) return null;
   const client = await getOwnedClient(profile.clientId, userId);
   return client ? profile : null;
+}
+
+function findCurrentOpenCycle(clientId: number) {
+  return prisma.clientBudgetPeriod.findFirst({
+    where: { clientId, status: 'OPEN' },
+    orderBy: [{ month: 'desc' }, { revision: 'desc' }, { id: 'desc' }],
+    include: { campaigns: { where: { status: 'OPEN' } } },
+  });
 }
 
 function requireV2(next: NextFunction, res: Response) {
@@ -90,12 +99,26 @@ router.post('/campaigns', async (req: AuthRequest, res: Response, next: NextFunc
     const amount = Number(budget);
     const end = parseDate(endDate) || monthEnd(bangkokToday());
     if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'งบแคมเปญต้องมากกว่า 0' });
-    const cycle = await prisma.clientBudgetPeriod.findFirst({
-      where: { clientId: client.id, status: 'OPEN' },
-      orderBy: [{ month: 'desc' }, { revision: 'desc' }, { id: 'desc' }],
-      include: { campaigns: { where: { status: 'OPEN' } } },
-    });
-    if (!cycle) return res.status(400).json({ error: 'กรุณาเปิดรอบงบของลูกค้าก่อนเพิ่มแคมเปญ' });
+    let cycle = await findCurrentOpenCycle(client.id);
+    if (!cycle) {
+      const today = bangkokToday();
+      const month = monthStart(today);
+      const latestPeriod = await prisma.clientBudgetPeriod.findFirst({
+        where: { clientId: client.id, month },
+        orderBy: [{ revision: 'desc' }, { id: 'desc' }],
+        select: { revision: true },
+      });
+      try {
+        cycle = await prisma.clientBudgetPeriod.create({
+          data: initialBudgetPeriodData(client, today, (latestPeriod?.revision ?? -1) + 1),
+          include: { campaigns: { where: { status: 'OPEN' } } },
+        });
+        await createRolloverNotification(client.userId, cycle);
+      } catch (error) {
+        cycle = await findCurrentOpenCycle(client.id);
+        if (!cycle) throw error;
+      }
+    }
     const available = budgetPeriodTotals(cycle.baseBudget, cycle.carryIn, cycle.campaigns).unallocated;
     if (amount > available) return res.status(400).json({ error: `งบแคมเปญเกินงบที่เหลือ (${available.toFixed(2)})` });
     const created = await prisma.$transaction(async tx => {

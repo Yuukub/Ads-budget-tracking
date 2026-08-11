@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { countActiveDays } from '../../src/utils/helpers.js';
-import { budgetPeriodTotals, monthEnd, pauseState, shiftEndDateToMonth } from './campaignCycles.js';
+import { budgetPeriodTotals, initialBudgetPeriodData, monthEnd, pauseState, shiftEndDateToMonth } from './campaignCycles.js';
 
 test('monthEnd covers 28/29/30/31-day months', () => {
   assert.equal(monthEnd('2026-02-01').toISOString().slice(0, 10), '2026-02-28');
@@ -54,4 +54,20 @@ test('recommended budget counts the reopen date as an active day', () => {
   );
 
   assert.equal(activeRunDays, 5);
+});
+
+test('missing cycle is bootstrapped from the client current budget', () => {
+  const data = initialBudgetPeriodData(
+    { id: 42, totalBudget: 12_500, carryOver: 0 },
+    new Date('2026-08-11T00:00:00.000Z'),
+    0,
+  );
+
+  assert.equal(data.clientId, 42);
+  assert.equal(data.baseBudget, 12_500);
+  assert.equal(data.carryIn, 0);
+  assert.equal(data.revision, 0);
+  assert.equal(data.month.toISOString().slice(0, 10), '2026-08-01');
+  assert.equal(data.startsOn.toISOString().slice(0, 10), '2026-08-01');
+  assert.equal(data.endsOn.toISOString().slice(0, 10), '2026-08-31');
 });

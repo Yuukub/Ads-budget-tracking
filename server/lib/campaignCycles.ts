@@ -29,6 +29,23 @@ export function monthEnd(value: Date | string): Date {
   return new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0));
 }
 
+export function initialBudgetPeriodData(
+  client: { id: number; totalBudget: number; carryOver: number },
+  today = bangkokToday(),
+  revision = 0,
+) {
+  const month = monthStart(today);
+  return {
+    clientId: client.id,
+    month,
+    revision,
+    baseBudget: client.totalBudget,
+    carryIn: client.carryOver,
+    startsOn: month,
+    endsOn: monthEnd(month),
+  };
+}
+
 export function nextMonthEnd(value: Date | string): Date {
   const month = monthStart(value);
   return new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 2, 0));
