@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Client, Campaign } from '../../types';
 import { Button } from '../ui/Button';
 import { CampaignCard } from '../campaigns/CampaignCard';
@@ -47,6 +48,8 @@ export function ClientCard({
   onCancelPause,
   readOnly = false,
 }: ClientCardProps) {
+  const [showBudgetDetails, setShowBudgetDetails] = useState(false);
+
   // คำนวณเปอร์เซ็นต์งบที่ใช้ไปแล้ว (จาก effectiveBudget)
   const effectiveBudget = client.effectiveBudget ?? client.totalBudget;
   const spentPercent = effectiveBudget > 0
@@ -111,8 +114,20 @@ export function ClientCard({
                 <span className="text-muted-foreground">💰 งบรวมลูกค้า:</span>
                 <span className="font-semibold">{formatCurrency(client.totalBudget)}</span>
               </div>
-              {!readOnly && (
-                <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  aria-expanded={showBudgetDetails}
+                  aria-controls={`budget-details-${client.id}`}
+                  onClick={() => setShowBudgetDetails(current => !current)}
+                >
+                  {showBudgetDetails ? '▴ ซ่อนรายละเอียด' : '▾ ดูรายละเอียดงบ'}
+                </Button>
+                {!readOnly && (
+                  <div className="flex flex-col gap-2 sm:flex-row">
                   {onResetBudget && !client.budgetPeriodId && (
                     <Button variant="soft-success" size="sm" className="w-full sm:w-auto" onClick={() => onResetBudget(client)}>
                       💰 เติมงบใหม่
@@ -123,8 +138,9 @@ export function ClientCard({
                       🧹 รีเซ็ตยอดปัจจุบัน
                     </Button>
                   )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {hasCarryOver && (
@@ -146,6 +162,8 @@ export function ClientCard({
             )}
           </div>
 
+          {showBudgetDetails && (
+            <div id={`budget-details-${client.id}`} className="space-y-3 pt-2">
           {/* การจัดสรรงบ */}
           <div className="space-y-1 pt-2 border-t border-border/50">
             <div className="flex items-center justify-between text-sm">
@@ -193,6 +211,8 @@ export function ClientCard({
               ⚠️ งบจัดสรรหมดแล้ว! กด [แก้ไข] เพื่อเพิ่มงบรวม
             </div>
           )}
+              </div>
+            )}
         </div>
       </div>
 

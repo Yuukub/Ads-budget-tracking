@@ -295,27 +295,39 @@ export function BudgetLogPage() {
                 </div>
             </div>
 
+            {/* Keep the last table rows visible above the fixed summary. */}
+            <div className="h-36 md:h-28" aria-hidden="true" />
+
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">งบ Ads ที่ใช้ได้ (Usable)</div>
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalUsable)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">เบิกเติมแล้ว (Top-up)</div>
-                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(totalTopup)}</div>
-                </div>
-                <div className="bg-card p-4 rounded-lg border border-border">
-                    <div className="text-sm text-muted-foreground">คงเหลือเบิก (Remaining)</div>
-                    <div className={`text-2xl font-bold ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}>
-                        {formatCurrency(remainingUsable)}
+            <section
+                className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur"
+                role="region"
+                aria-label="สรุปบัญชี"
+            >
+                <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 md:grid-cols-4 md:gap-4 lg:px-8">
+                    <div className="min-w-0 bg-card p-2.5 sm:p-3 rounded-lg border border-border">
+                        <div className="truncate text-[11px] text-muted-foreground sm:text-sm">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
+                        <div className="truncate text-base font-bold text-green-600 dark:text-green-400 sm:text-xl" title={formatCurrency(totalReceived)}>{formatCurrency(totalReceived)}</div>
+                    </div>
+                    <div className="min-w-0 bg-card p-2.5 sm:p-3 rounded-lg border border-border">
+                        <div className="truncate text-[11px] text-muted-foreground sm:text-sm">งบ Ads ที่ใช้ได้ (Usable)</div>
+                        <div className="truncate text-base font-bold text-blue-600 dark:text-blue-400 sm:text-xl" title={formatCurrency(totalUsable)}>{formatCurrency(totalUsable)}</div>
+                    </div>
+                    <div className="min-w-0 bg-card p-2.5 sm:p-3 rounded-lg border border-border">
+                        <div className="truncate text-[11px] text-muted-foreground sm:text-sm">เบิกเติมแล้ว (Top-up)</div>
+                        <div className="truncate text-base font-bold text-orange-600 dark:text-orange-400 sm:text-xl" title={formatCurrency(totalTopup)}>{formatCurrency(totalTopup)}</div>
+                    </div>
+                    <div className="min-w-0 bg-card p-2.5 sm:p-3 rounded-lg border border-border">
+                        <div className="truncate text-[11px] text-muted-foreground sm:text-sm">คงเหลือเบิก (Remaining)</div>
+                        <div
+                            className={`truncate text-base font-bold sm:text-xl ${remainingUsable < 0 ? 'text-red-500' : 'text-foreground'}`}
+                            title={formatCurrency(remainingUsable)}
+                        >
+                            {formatCurrency(remainingUsable)}
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="เพิ่มรายการบัญชี">
                 <form onSubmit={handleSubmit} className="space-y-4">
