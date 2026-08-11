@@ -47,10 +47,33 @@ export function parseActiveDays(value: string | null): string[] | null {
   return value ? JSON.parse(value) : null;
 }
 
+type BudgetAllocation = {
+  budget: number;
+  spent: number;
+  campaignProfile?: { isActive: boolean };
+};
+
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+export function budgetPeriodTotals(baseBudget: number, carryIn: number, campaigns: BudgetAllocation[]) {
+  const effectiveBudget = roundCurrency(baseBudget + carryIn);
+  const allocated = roundCurrency(campaigns.reduce((sum, campaign) => sum + campaign.budget, 0));
+  const totalSpent = roundCurrency(campaigns.reduce((sum, campaign) => sum + campaign.spent, 0));
+
+  return {
+    effectiveBudget,
+    allocated,
+    totalSpent,
+    unallocated: roundCurrency(effectiveBudget - allocated),
+  };
+}
+
 export function pauseState(startsOn: Date, endsOn: Date, status: string, today = bangkokToday()): 'scheduled' | 'paused' | 'resumed' | 'cancelled' {
   if (status === 'CANCELLED') return 'cancelled';
   if (today < startsOn) return 'scheduled';
-  if (today > endsOn) return 'resumed';
+  if (today >= endsOn) return 'resumed';
   return 'paused';
 }
 
@@ -94,12 +117,20 @@ export async function getCycleClients(userId: number) {
   const clients = await prisma.client.findMany({
     where: { userId },
     include: {
-      budgetPeriods: { where: { status: 'OPEN' }, orderBy: { month: 'desc' }, take: 1 },
-      campaignProfiles: {
-        where: { isActive: true },
+      budgetPeriods: {
+        where: { status: 'OPEN' },
+        orderBy: [{ month: 'desc' }, { revision: 'desc' }, { id: 'desc' }],
+        take: 1,
         include: {
-          periods: { where: { status: 'OPEN' }, orderBy: { createdAt: 'desc' }, take: 1 },
-          pauseCampaigns: { include: { pauseEvent: true } },
+          campaigns: {
+            where: { status: 'OPEN' },
+            orderBy: { createdAt: 'asc' },
+            include: {
+              campaignProfile: {
+                include: { pauseCampaigns: { include: { pauseEvent: true } } },
+              },
+            },
+          },
         },
       },
     },
@@ -109,24 +140,21 @@ export async function getCycleClients(userId: number) {
   const today = bangkokToday();
   return clients.map(client => {
     const budgetPeriod = client.budgetPeriods[0];
-    const campaigns = client.campaignProfiles
-      .filter(profile => profile.periods[0])
-      .map(profile => toClientCampaign(profile, profile.periods[0], profile.pauseCampaigns.map(link => link.pauseEvent)));
-    const allocated = campaigns.reduce((sum, campaign) => sum + campaign.budget, 0);
-    const totalSpent = campaigns.reduce((sum, campaign) => sum + campaign.spent, 0);
+    const campaigns = (budgetPeriod?.campaigns ?? []).map(period => toClientCampaign(
+      period.campaignProfile,
+      period,
+      period.campaignProfile.pauseCampaigns.map(link => link.pauseEvent),
+    ));
     const baseBudget = budgetPeriod?.baseBudget ?? client.totalBudget;
     const carryIn = budgetPeriod?.carryIn ?? client.carryOver;
-    const effectiveBudget = Math.round((baseBudget + carryIn) * 100) / 100;
+    const totals = budgetPeriodTotals(baseBudget, carryIn, budgetPeriod?.campaigns ?? []);
 
     return {
       ...client,
       totalBudget: baseBudget,
       carryOver: carryIn,
       campaigns,
-      allocated: Math.round(allocated * 100) / 100,
-      unallocated: Math.round((effectiveBudget - allocated) * 100) / 100,
-      totalSpent: Math.round(totalSpent * 100) / 100,
-      effectiveBudget,
+      ...totals,
       budgetPeriodId: budgetPeriod?.id ?? null,
       budgetPeriodMonth: budgetPeriod?.month ?? null,
       budgetPeriodEndsOn: budgetPeriod?.endsOn ?? null,
@@ -160,7 +188,7 @@ export async function createPauseNotifications(userId: number, pause: { id: stri
     }),
     createNotification({
       userId, type: 'PAUSE_END', title: 'ถึงกำหนดเปิดแอดกลับ', message: pause.reason,
-      dueOn: new Date(pause.endsOn.getTime() + 86400000), entityType: 'PAUSE_EVENT', entityId: pause.id, dedupeKey: `pause-end:${pause.id}`,
+      dueOn: pause.endsOn, entityType: 'PAUSE_EVENT', entityId: pause.id, dedupeKey: `pause-end:${pause.id}`,
     }),
   ]);
 }

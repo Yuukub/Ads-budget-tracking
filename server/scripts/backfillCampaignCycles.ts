@@ -73,6 +73,12 @@ async function main() {
         where: { campaignProfileId: profileId, clientBudgetPeriodId: budgetPeriod.id },
       });
       if (conflict) profileId = undefined;
+      else if (!legacy.isArchived) {
+        await prisma.campaignProfile.update({
+          where: { id: profileId },
+          data: { isActive: true },
+        });
+      }
     }
 
     if (!profileId) {
@@ -110,7 +116,25 @@ async function main() {
     migrated++;
   }
 
-  console.log(JSON.stringify({ migrated, skipped, legacyTotal: legacyCampaigns.length }));
+  const repairedProfiles = await prisma.campaignProfile.updateMany({
+    where: {
+      isActive: false,
+      periods: {
+        some: {
+          status: 'OPEN',
+          clientBudgetPeriod: { status: 'OPEN' },
+        },
+      },
+    },
+    data: { isActive: true },
+  });
+
+  console.log(JSON.stringify({
+    migrated,
+    skipped,
+    legacyTotal: legacyCampaigns.length,
+    reactivatedProfiles: repairedProfiles.count,
+  }));
 }
 
 main()

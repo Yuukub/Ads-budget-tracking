@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import {
   CAMPAIGN_CYCLES_ENABLED,
   bangkokToday,
+  budgetPeriodTotals,
   createPauseNotifications,
   createRolloverNotification,
   monthEnd,
@@ -49,17 +50,17 @@ function requireV2(next: NextFunction, res: Response) {
 
 async function createPause(clientId: number, profileIds: number[], body: Record<string, unknown>, userId: number, scope: 'CLIENT' | 'CAMPAIGN', res: Response) {
   const startsOn = parseDate(body.startsOn) || bangkokToday();
-  const endsOn = parseDate(body.endsOn) || startsOn;
+  const endsOn = parseDate(body.endsOn) || new Date(startsOn.getTime() + 86400000);
   const reason = typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : 'ร้านปิด';
 
-  if (endsOn < startsOn) return res.status(400).json({ error: 'วันสิ้นสุดต้องไม่ก่อนวันเริ่ม' });
+  if (endsOn <= startsOn) return res.status(400).json({ error: 'วันที่เปิดกลับต้องอยู่หลังวันที่เริ่มพัก' });
   if (profileIds.length === 0) return res.status(400).json({ error: 'ไม่มีแคมเปญที่กำลังใช้งานให้พัก' });
 
   const overlap = await prisma.pauseEvent.findFirst({
     where: {
       status: 'ACTIVE',
-      startsOn: { lte: endsOn },
-      endsOn: { gte: startsOn },
+      startsOn: { lt: endsOn },
+      endsOn: { gt: startsOn },
       campaigns: { some: { campaignProfileId: { in: profileIds } } },
     },
   });
@@ -89,9 +90,13 @@ router.post('/campaigns', async (req: AuthRequest, res: Response, next: NextFunc
     const amount = Number(budget);
     const end = parseDate(endDate) || monthEnd(bangkokToday());
     if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'งบแคมเปญต้องมากกว่า 0' });
-    const cycle = await prisma.clientBudgetPeriod.findFirst({ where: { clientId: client.id, status: 'OPEN' }, orderBy: { month: 'desc' }, include: { campaigns: { where: { status: 'OPEN' } } } });
+    const cycle = await prisma.clientBudgetPeriod.findFirst({
+      where: { clientId: client.id, status: 'OPEN' },
+      orderBy: [{ month: 'desc' }, { revision: 'desc' }, { id: 'desc' }],
+      include: { campaigns: { where: { status: 'OPEN' } } },
+    });
     if (!cycle) return res.status(400).json({ error: 'กรุณาเปิดรอบงบของลูกค้าก่อนเพิ่มแคมเปญ' });
-    const available = cycle.baseBudget + cycle.carryIn - cycle.campaigns.reduce((sum, period) => sum + period.budget, 0);
+    const available = budgetPeriodTotals(cycle.baseBudget, cycle.carryIn, cycle.campaigns).unallocated;
     if (amount > available) return res.status(400).json({ error: `งบแคมเปญเกินงบที่เหลือ (${available.toFixed(2)})` });
     const created = await prisma.$transaction(async tx => {
       const profile = await tx.campaignProfile.create({ data: { clientId: client.id, name: String(name).trim(), platform, googleAdsType: platform === 'google_ads' ? googleAdsType || null : null, activeDays: activeDays ? JSON.stringify(activeDays) : null } });
@@ -290,7 +295,7 @@ router.post('/clients/:id/periods/rollover', async (req: AuthRequest, res: Respo
 
     const current = await prisma.clientBudgetPeriod.findFirst({
       where: { clientId, status: 'OPEN' },
-      orderBy: { month: 'desc' },
+      orderBy: [{ month: 'desc' }, { revision: 'desc' }, { id: 'desc' }],
       include: { campaigns: { where: { status: 'OPEN' }, include: { campaignProfile: true } } },
     });
     if (!current) return res.status(400).json({ error: 'ไม่พบรอบงบที่เปิดอยู่' });

@@ -36,6 +36,10 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
     ? `เหลือ ${daysRemaining} วัน`
     : `หมดแล้ว ${Math.abs(daysRemaining)} วัน`;
   const cancellablePause = campaign.pauseEvents?.find(pause => pause.status === 'paused' || pause.status === 'scheduled');
+  const displayedPause = campaign.pauseEvents?.find(pause => pause.status === campaign.pauseStatus);
+  const pauseDateDetails = displayedPause
+    ? `เริ่มพัก: ${formatDate(displayedPause.startsOn)} • เปิดกลับ: ${formatDate(displayedPause.endsOn)}`
+    : null;
 
   return (
     <div className="bg-card/50 rounded-lg p-4 border border-border">
@@ -79,7 +83,12 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
       {/* Active Days & Recommended Budget */}
       {campaign.pauseStatus && (
         <div className={`mb-3 rounded-lg px-3 py-2 text-sm ${campaign.pauseStatus === 'paused' ? 'bg-amber-50 text-amber-700' : campaign.pauseStatus === 'scheduled' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
-          {campaign.pauseStatus === 'paused' ? '⏸️ พักอยู่' : campaign.pauseStatus === 'scheduled' ? '🗓️ กำหนดพัก' : '▶️ กลับมาทำงานแล้ว'}{campaign.pauseReason ? `: ${campaign.pauseReason}` : ''}
+          <div className="font-medium">
+            {campaign.pauseStatus === 'paused' ? '⏸️ พักอยู่' : campaign.pauseStatus === 'scheduled' ? '🗓️ กำหนดพัก' : '▶️ กลับมาทำงานแล้ว'}{campaign.pauseReason ? `: ${campaign.pauseReason}` : ''}
+          </div>
+          {pauseDateDetails && (
+            <div className="mt-1 text-xs opacity-80">{pauseDateDetails}</div>
+          )}
         </div>
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between text-base py-3 mb-3 border-t border-border gap-2">

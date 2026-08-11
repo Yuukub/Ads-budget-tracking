@@ -447,7 +447,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       const period = await prisma.clientBudgetPeriod.findFirst({
         where: { clientId, status: 'OPEN' },
         include: { campaigns: { where: { status: 'OPEN' } } },
-        orderBy: { month: 'desc' },
+        orderBy: [{ month: 'desc' }, { revision: 'desc' }, { id: 'desc' }],
       });
       const nextBudget = totalBudget === undefined ? (period?.baseBudget ?? existing.totalBudget) : Number(totalBudget);
       const allocated = period?.campaigns.reduce((sum, campaign) => sum + campaign.budget, 0) ?? 0;

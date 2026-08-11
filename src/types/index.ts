@@ -71,7 +71,7 @@ export interface PauseEvent {
   id: string;
   scope: 'CLIENT' | 'CAMPAIGN';
   startsOn: string;
-  endsOn: string;
+  endsOn: string; // วันที่เปิดกลับจริง (ไม่นับเป็นวันพัก)
   reason: string | null;
   status: 'ACTIVE' | 'CANCELLED' | 'scheduled' | 'paused' | 'resumed' | 'cancelled';
   cancelledAt?: string | null;

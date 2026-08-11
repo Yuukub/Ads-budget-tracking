@@ -39,12 +39,12 @@ const dayLabels: Record<DayOfWeek, string> = {
 };
 
 // นับจำนวนวันที่จะเปิดแอดจากวันนี้ถึงวันหมดอายุ
-export function countActiveDays(endDate: string, activeDays: DayOfWeek[] | null, pauseEvents: PauseEvent[] = []): number {
+export function countActiveDays(endDate: string, activeDays: DayOfWeek[] | null, pauseEvents: PauseEvent[] = [], fromDate = new Date()): number {
   const days = activeDays || DEFAULT_ACTIVE_DAYS;
   if (days.length === 0) return 0;
 
   const end = new Date(`${endDate.slice(0, 10)}T00:00:00`);
-  const today = new Date();
+  const today = new Date(fromDate);
   today.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
@@ -59,7 +59,7 @@ export function countActiveDays(endDate: string, activeDays: DayOfWeek[] | null,
     const dateKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
     const isPaused = pauseEvents.some(pause =>
       pause.status !== 'CANCELLED' && pause.status !== 'cancelled'
-      && dateKey >= pause.startsOn.slice(0, 10) && dateKey <= pause.endsOn.slice(0, 10)
+      && dateKey >= pause.startsOn.slice(0, 10) && dateKey < pause.endsOn.slice(0, 10)
     );
     if (activeDayNumbers.includes(current.getDay()) && !isPaused) {
       count++;
