@@ -102,10 +102,12 @@ model ClientBudgetPeriod {
   id          Int      @id @default(autoincrement())
   clientId    Int      @map("client_id")
   month       DateTime @db.Date
+  revision    Int      @default(0)
   baseBudget  Float    @map("base_budget")
   carryIn     Float    @default(0) @map("carry_in")
   carryOut    Float?   @map("carry_out")
   status      String   @default("OPEN")
+  closeReason String?  @map("close_reason")
   startsOn    DateTime @map("starts_on") @db.Date
   endsOn      DateTime @map("ends_on") @db.Date
   closedAt    DateTime? @map("closed_at")
@@ -114,7 +116,7 @@ model ClientBudgetPeriod {
   client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   campaigns   CampaignPeriod[]
 
-  @@unique([clientId, month])
+  @@unique([clientId, month, revision])
   @@index([clientId, status])
   @@map("client_budget_periods")
 }

@@ -21,6 +21,7 @@ interface ClientCardProps {
   onArchiveCampaign?: (campaign: Campaign) => void;
   onViewHistory?: (client: Client) => void;
   onResetBudget?: (client: Client) => void;
+  onRebaseline?: (client: Client) => void;
   onPause?: (client: Client) => void;
   onRollover?: (client: Client) => void;
   onPauseCampaign?: (campaign: Campaign) => void;
@@ -39,6 +40,7 @@ export function ClientCard({
   onArchiveCampaign,
   onViewHistory,
   onResetBudget,
+  onRebaseline,
   onPause,
   onRollover,
   onPauseCampaign,
@@ -109,10 +111,19 @@ export function ClientCard({
                 <span className="text-muted-foreground">💰 งบรวมลูกค้า:</span>
                 <span className="font-semibold">{formatCurrency(client.totalBudget)}</span>
               </div>
-              {!readOnly && onResetBudget && (
-                <Button variant="soft-success" size="sm" className="w-full sm:w-auto" onClick={() => onResetBudget(client)}>
-                  💰 เติมงบใหม่
-                </Button>
+              {!readOnly && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {onResetBudget && !client.budgetPeriodId && (
+                    <Button variant="soft-success" size="sm" className="w-full sm:w-auto" onClick={() => onResetBudget(client)}>
+                      💰 เติมงบใหม่
+                    </Button>
+                  )}
+                  {onRebaseline && (
+                    <Button variant="soft-warning" size="sm" className="w-full sm:w-auto" onClick={() => onRebaseline(client)}>
+                      🧹 รีเซ็ตยอดปัจจุบัน
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 

@@ -96,6 +96,11 @@ export interface RolloverFormData {
   campaigns: RolloverCampaignEntry[];
 }
 
+export interface RebaselineFormData {
+  newBudget: number;
+  confirmation: 'RESET';
+}
+
 export interface AppNotification {
   id: string;
   type: 'PAUSE_START' | 'PAUSE_END' | 'ROLLOVER_REVIEW';

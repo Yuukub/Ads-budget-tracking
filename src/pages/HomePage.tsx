@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Client, Campaign, ClientFormData, CampaignFormData, PauseFormData, RolloverFormData, AppNotification } from '../types';
+import { Client, Campaign, ClientFormData, CampaignFormData, PauseFormData, RolloverFormData, RebaselineFormData, AppNotification } from '../types';
 import { clientsApi, campaignsApi, clientHistoryApi, notificationsApi, pauseApi } from '../api/api';
 import { Layout } from '../components/layout/Layout';
 import { ClientCard } from '../components/clients/ClientCard';
@@ -11,6 +11,7 @@ import { NoBudgetWarning } from '../components/clients/NoBudgetWarning';
 import { HistoryModal } from '../components/clients/HistoryModal';
 import { ResetBudgetModal } from '../components/clients/ResetBudgetModal';
 import { RolloverModal } from '../components/clients/RolloverModal';
+import { RebaselineBudgetModal } from '../components/clients/RebaselineBudgetModal';
 import { PauseModal } from '../components/campaigns/PauseModal';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -24,7 +25,7 @@ const getLogoUrl = (logoPath: string | null) => {
   return `http://localhost:3001${logoPath}`;
 };
 
-type ModalType = 'none' | 'addClient' | 'editClient' | 'addCampaign' | 'editCampaign' | 'updateSpent' | 'noBudget' | 'selectClientToDelete' | 'deleteClient' | 'deleteCampaign' | 'history' | 'resetBudget' | 'pauseClient' | 'pauseCampaign' | 'rollover';
+type ModalType = 'none' | 'addClient' | 'editClient' | 'addCampaign' | 'editCampaign' | 'updateSpent' | 'noBudget' | 'selectClientToDelete' | 'deleteClient' | 'deleteCampaign' | 'history' | 'resetBudget' | 'pauseClient' | 'pauseCampaign' | 'rollover' | 'rebaseline';
 
 interface HomePageProps {
   adminMode?: boolean;
@@ -255,6 +256,22 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
     } finally { setIsSubmitting(false); }
   };
 
+  const handleRebaseline = async (data: RebaselineFormData) => {
+    if (!selectedClient) return;
+    setIsSubmitting(true);
+    try {
+      await clientHistoryApi.rebaseline(selectedClient.id, data, adminMode ? targetUserId : undefined);
+      await fetchClients();
+      await notificationsApi.getAll().then(setNotifications);
+      closeModal();
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { error?: string } } };
+      alert(apiError.response?.data?.error || 'ไม่สามารถตั้งยอดปัจจุบันใหม่ได้');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCancelPause = async (pauseId: string) => {
     if (!confirm('ต้องการยกเลิกการพักแอดนี้หรือไม่? ประวัติจะยังถูกเก็บไว้')) return;
     try {
@@ -328,6 +345,8 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
         return `⏸️ พักแอด - ${selectedCampaign?.name}`;
       case 'rollover':
         return `🔄 ตรวจและเปิดรอบใหม่ - ${selectedClient?.name}`;
+      case 'rebaseline':
+        return `🧹 รีเซ็ตยอดปัจจุบัน - ${selectedClient?.name}`;
       default:
         return '';
     }
@@ -491,6 +510,10 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
                 setSelectedClient(c);
                 setModalType('resetBudget');
               }}
+              onRebaseline={(c) => {
+                setSelectedClient(c);
+                setModalType('rebaseline');
+              }}
             />
           ))}
         </div>
@@ -542,6 +565,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
         {modalType === 'pauseClient' && selectedClient && <PauseModal targetName={`${selectedClient.name} (ทุกแคมเปญ)`} onSubmit={handlePauseClient} onCancel={closeModal} isLoading={isSubmitting} />}
         {modalType === 'pauseCampaign' && selectedCampaign && <PauseModal targetName={selectedCampaign.name} onSubmit={handlePauseCampaign} onCancel={closeModal} isLoading={isSubmitting} />}
         {modalType === 'rollover' && selectedClient && <RolloverModal client={selectedClient} onSubmit={handleRollover} onCancel={closeModal} isLoading={isSubmitting} />}
+        {modalType === 'rebaseline' && selectedClient && <RebaselineBudgetModal client={selectedClient} onSubmit={handleRebaseline} onCancel={closeModal} isLoading={isSubmitting} />}
 
         {modalType === 'noBudget' && selectedClient && (
           <NoBudgetWarning

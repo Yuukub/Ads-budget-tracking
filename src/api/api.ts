@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, AppNotification } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, RebaselineFormData, AppNotification } from '../types';
 
 const API_URL = '/api';
 
@@ -119,6 +119,12 @@ export const clientHistoryApi = {
 
   rollover: async (clientId: number, formData: RolloverFormData) => {
     const { data } = await api.post(`/clients/${clientId}/periods/rollover`, formData);
+    return data;
+  },
+
+  rebaseline: async (clientId: number, formData: RebaselineFormData, userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    const { data } = await api.post(`/clients/${clientId}/rebaseline${params}`, formData);
     return data;
   },
 };

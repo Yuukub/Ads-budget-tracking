@@ -184,6 +184,96 @@ router.delete('/campaigns/:id', async (req: AuthRequest, res: Response, next: Ne
   return res.json({ message: 'ปิดใช้งานแคมเปญแล้ว' });
 });
 
+router.post('/clients/:id/rebaseline', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!requireV2(next, res)) return;
+  try {
+    const clientId = Number(req.params.id);
+    const client = await getOwnedClient(clientId, req.userId!);
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+
+    const newBudget = Number(req.body.newBudget);
+    if (!Number.isFinite(newBudget) || newBudget <= 0) {
+      return res.status(400).json({ error: 'งบตั้งต้นใหม่ต้องมากกว่า 0' });
+    }
+    if (req.body.confirmation !== 'RESET') {
+      return res.status(400).json({ error: 'กรุณาพิมพ์ RESET เพื่อยืนยันการตั้งยอดใหม่' });
+    }
+
+    const today = bangkokToday();
+    const targetMonth = monthStart(today);
+    const openPeriods = await prisma.clientBudgetPeriod.findMany({
+      where: { clientId, status: 'OPEN' },
+      include: { campaigns: { where: { status: 'OPEN' } } },
+    });
+    const latestRevision = await prisma.clientBudgetPeriod.findFirst({
+      where: { clientId, month: targetMonth },
+      orderBy: { revision: 'desc' },
+      select: { revision: true },
+    });
+    const revision = (latestRevision?.revision ?? -1) + 1;
+    const openPeriodIds = openPeriods.map(period => period.id);
+    const archivedCampaigns = openPeriods.reduce((sum, period) => sum + period.campaigns.length, 0);
+    const closedAt = new Date();
+
+    const period = await prisma.$transaction(async tx => {
+      if (openPeriodIds.length > 0) {
+        await tx.campaignPeriod.updateMany({
+          where: { clientBudgetPeriodId: { in: openPeriodIds }, status: 'OPEN' },
+          data: { status: 'CLOSED', closedAt },
+        });
+        await tx.clientBudgetPeriod.updateMany({
+          where: { id: { in: openPeriodIds } },
+          data: { status: 'CLOSED', carryOut: 0, closeReason: 'REBASELINE', closedAt },
+        });
+        await tx.notification.updateMany({
+          where: {
+            entityType: 'CLIENT_BUDGET_PERIOD',
+            entityId: { in: openPeriodIds.map(String) },
+            resolvedAt: null,
+          },
+          data: { resolvedAt: closedAt },
+        });
+      }
+
+      await tx.campaignProfile.updateMany({
+        where: { clientId, isActive: true },
+        data: { isActive: false },
+      });
+      await tx.pauseEvent.updateMany({
+        where: { clientId, status: 'ACTIVE' },
+        data: { status: 'CANCELLED', cancelledAt: closedAt },
+      });
+      await tx.client.update({
+        where: { id: clientId },
+        data: { totalBudget: newBudget, carryOver: 0 },
+      });
+
+      return tx.clientBudgetPeriod.create({
+        data: {
+          clientId,
+          month: targetMonth,
+          revision,
+          baseBudget: newBudget,
+          carryIn: 0,
+          startsOn: today,
+          endsOn: monthEnd(today),
+        },
+      });
+    });
+
+    await createRolloverNotification(client.userId, period);
+    return res.status(201).json({
+      period,
+      archivedCampaigns,
+      effectiveBudget: newBudget,
+      message: 'ตั้งยอดปัจจุบันใหม่เรียบร้อยแล้ว ประวัติเดิมยังถูกเก็บไว้',
+    });
+  } catch (error) {
+    console.error('Rebaseline budget error:', error);
+    return res.status(500).json({ error: 'ไม่สามารถตั้งยอดปัจจุบันใหม่ได้' });
+  }
+});
+
 router.post('/clients/:id/periods/rollover', async (req: AuthRequest, res: Response) => {
   if (!CAMPAIGN_CYCLES_ENABLED) return res.status(409).json({ error: 'Campaign cycles v2 is not enabled' });
   try {

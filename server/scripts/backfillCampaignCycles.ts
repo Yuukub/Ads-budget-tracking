@@ -30,7 +30,7 @@ async function main() {
 
     const cycleMonth = monthStart(legacy.isArchived ? legacy.endDate : new Date());
     const budgetPeriod = await prisma.clientBudgetPeriod.upsert({
-      where: { clientId_month: { clientId: legacy.clientId, month: cycleMonth } },
+      where: { clientId_month_revision: { clientId: legacy.clientId, month: cycleMonth, revision: 0 } },
       create: {
         clientId: legacy.clientId,
         month: cycleMonth,

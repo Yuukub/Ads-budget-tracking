@@ -209,6 +209,66 @@ router.get('/:id/history', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Rebaseline current figures without carrying stale balances forward.
+// V2 requests are handled by campaignCycles.ts before reaching this legacy fallback.
+router.post('/:id/rebaseline', async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = parseInt(req.params.id as string);
+    const newBudget = Number(req.body.newBudget);
+    if (!Number.isInteger(clientId) || !Number.isFinite(newBudget) || newBudget <= 0) {
+      return res.status(400).json({ error: 'งบตั้งต้นใหม่ต้องมากกว่า 0' });
+    }
+    if (req.body.confirmation !== 'RESET') {
+      return res.status(400).json({ error: 'กรุณาพิมพ์ RESET เพื่อยืนยันการตั้งยอดใหม่' });
+    }
+
+    const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
+    let effectiveUserId = req.userId!;
+    if (targetUserId && targetUserId !== req.userId) {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { role: true },
+      });
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required to modify other users\' data' });
+      }
+      effectiveUserId = targetUserId;
+    }
+
+    const existingClient = await prisma.client.findFirst({
+      where: { id: clientId, userId: effectiveUserId },
+      include: { campaigns: { where: { isArchived: false } } },
+    });
+    if (!existingClient) return res.status(404).json({ error: 'Client not found' });
+
+    const archivedAt = new Date();
+    const updatedClient = await prisma.$transaction(async tx => {
+      await tx.campaign.updateMany({
+        where: { clientId, isArchived: false },
+        data: { isArchived: true, archivedAt, clientName: existingClient.name },
+      });
+      return tx.client.update({
+        where: { id: clientId },
+        data: { totalBudget: newBudget, carryOver: 0 },
+      });
+    });
+
+    return res.status(201).json({
+      ...updatedClient,
+      campaigns: [],
+      allocated: 0,
+      unallocated: newBudget,
+      totalSpent: 0,
+      effectiveBudget: newBudget,
+      archivedCampaigns: existingClient.campaigns.length,
+      message: 'ตั้งยอดปัจจุบันใหม่เรียบร้อยแล้ว ประวัติเดิมยังถูกเก็บไว้',
+    });
+  } catch (error) {
+    console.error('Legacy rebaseline budget error:', error);
+    return res.status(500).json({ error: 'ไม่สามารถตั้งยอดปัจจุบันใหม่ได้' });
+  }
+});
+
 // Reset budget (เติมงบใหม่)
 // Admin can reset budget for other users' clients by providing ?userId=xxx
 router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
