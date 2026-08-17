@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Campaign, DayOfWeek } from '../../types';
 import { Button } from '../ui/Button';
 import { PlatformIcon } from '../ui/PlatformIcon';
@@ -11,6 +12,16 @@ import {
 
 // ลำดับวันสำหรับแสดงผล
 const DAYS_ORDER: DayOfWeek[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const RESUMED_PAUSE_DISMISSAL_PREFIX = 'dismissed-resumed-pause:';
+
+function isResumedPauseDismissed(pauseId: string) {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(`${RESUMED_PAUSE_DISMISSAL_PREFIX}${pauseId}`) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -24,6 +35,7 @@ interface CampaignCardProps {
 }
 
 export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArchive, onPause, onCancelPause, readOnly = false }: CampaignCardProps) {
+  const [dismissedPauseId, setDismissedPauseId] = useState<string | null>(null);
   const enriched = enrichCampaign(campaign);
   const { daysRemaining, status, remaining, activeRunDays, recommendedDailyBudget } = enriched;
 
@@ -40,6 +52,19 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
   const pauseDateDetails = displayedPause
     ? `เริ่มพัก: ${formatDate(displayedPause.startsOn)} • เปิดกลับ: ${formatDate(displayedPause.endsOn)}`
     : null;
+  const resumedPauseIsDismissed = campaign.pauseStatus === 'resumed' && displayedPause
+    ? dismissedPauseId === displayedPause.id || isResumedPauseDismissed(displayedPause.id)
+    : false;
+
+  const dismissResumedPause = () => {
+    if (!displayedPause) return;
+    setDismissedPauseId(displayedPause.id);
+    try {
+      window.localStorage.setItem(`${RESUMED_PAUSE_DISMISSAL_PREFIX}${displayedPause.id}`, 'true');
+    } catch {
+      // State still hides the banner for the current page when storage is unavailable.
+    }
+  };
 
   return (
     <div className="bg-card/50 rounded-lg p-4 border border-border">
@@ -81,10 +106,23 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
       </div>
 
       {/* Active Days & Recommended Budget */}
-      {campaign.pauseStatus && (
+      {campaign.pauseStatus && !resumedPauseIsDismissed && (
         <div className={`mb-3 rounded-lg px-3 py-2 text-sm ${campaign.pauseStatus === 'paused' ? 'bg-amber-50 text-amber-700' : campaign.pauseStatus === 'scheduled' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
-          <div className="font-medium">
-            {campaign.pauseStatus === 'paused' ? '⏸️ พักอยู่' : campaign.pauseStatus === 'scheduled' ? '🗓️ กำหนดพัก' : '▶️ กลับมาทำงานแล้ว'}{campaign.pauseReason ? `: ${campaign.pauseReason}` : ''}
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-medium">
+              {campaign.pauseStatus === 'paused' ? '⏸️ พักอยู่' : campaign.pauseStatus === 'scheduled' ? '🗓️ กำหนดพัก' : '▶️ กลับมาทำงานแล้ว'}{campaign.pauseReason ? `: ${campaign.pauseReason}` : ''}
+            </div>
+            {campaign.pauseStatus === 'resumed' && displayedPause && (
+              <button
+                type="button"
+                className="-mr-1 rounded px-1.5 text-lg leading-none opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-current"
+                onClick={dismissResumedPause}
+                aria-label="ปิดการแจ้งเตือนกลับมาทำงานแล้ว"
+                title="ปิด"
+              >
+                ×
+              </button>
+            )}
           </div>
           {pauseDateDetails && (
             <div className="mt-1 text-xs opacity-80">{pauseDateDetails}</div>

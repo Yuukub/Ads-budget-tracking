@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { countActiveDays } from '../../src/utils/helpers.js';
-import { budgetPeriodTotals, initialBudgetPeriodData, monthEnd, pauseState, shiftEndDateToMonth } from './campaignCycles.js';
+import { budgetPeriodTotals, initialBudgetPeriodData, monthEnd, pauseState, shiftEndDateToMonth, toClientCampaign } from './campaignCycles.js';
 
 test('monthEnd covers 28/29/30/31-day months', () => {
   assert.equal(monthEnd('2026-02-01').toISOString().slice(0, 10), '2026-02-28');
@@ -36,6 +36,43 @@ test('pause ends when the reopen date begins', () => {
   assert.equal(pauseState(startsOn, reopensOn, 'ACTIVE', new Date('2026-08-11T00:00:00.000Z')), 'scheduled');
   assert.equal(pauseState(startsOn, reopensOn, 'ACTIVE', new Date('2026-08-12T00:00:00.000Z')), 'paused');
   assert.equal(pauseState(startsOn, reopensOn, 'ACTIVE', new Date('2026-08-13T00:00:00.000Z')), 'resumed');
+});
+
+test('resumed pause banner only appears on the reopen date', () => {
+  const profile = {
+    id: 1,
+    clientId: 1,
+    name: 'Search',
+    platform: 'google_ads',
+    googleAdsType: 'search',
+    activeDays: null,
+    createdAt: new Date('2026-08-01T00:00:00.000Z'),
+  };
+  const period = {
+    id: 1,
+    budget: 2_750,
+    spent: 1_000,
+    endDate: new Date('2026-08-31T00:00:00.000Z'),
+    status: 'OPEN',
+    closedAt: null,
+    updatedAt: new Date('2026-08-12T00:00:00.000Z'),
+  };
+  const pauseEvents = [{
+    id: 'pause-1',
+    startsOn: new Date('2026-08-12T00:00:00.000Z'),
+    endsOn: new Date('2026-08-13T00:00:00.000Z'),
+    reason: 'ร้านปิด',
+    status: 'ACTIVE',
+    scope: 'CAMPAIGN',
+    cancelledAt: null,
+  }];
+
+  const onReopenDate = toClientCampaign(profile, period, pauseEvents, new Date('2026-08-13T00:00:00.000Z'));
+  assert.equal(onReopenDate.pauseStatus, 'resumed');
+
+  const afterReopenDate = toClientCampaign(profile, period, pauseEvents, new Date('2026-08-14T00:00:00.000Z'));
+  assert.equal(afterReopenDate.pauseStatus, null);
+  assert.equal(afterReopenDate.pauseEvents[0].status, 'resumed', 'pause history must remain intact');
 });
 
 test('recommended budget counts the reopen date as an active day', () => {

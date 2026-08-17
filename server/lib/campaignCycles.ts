@@ -94,19 +94,21 @@ export function pauseState(startsOn: Date, endsOn: Date, status: string, today =
   return 'paused';
 }
 
-export function toClientCampaign(profile: any, period: any, pauseEvents: any[]) {
+export function toClientCampaign(profile: any, period: any, pauseEvents: any[], today = bangkokToday()) {
   const pauses = pauseEvents.map(event => ({
     id: event.id,
     startsOn: event.startsOn,
     endsOn: event.endsOn,
     reason: event.reason,
-    status: pauseState(event.startsOn, event.endsOn, event.status),
+    status: pauseState(event.startsOn, event.endsOn, event.status, today),
     scope: event.scope,
     cancelledAt: event.cancelledAt,
   }));
   const activePause = pauses.find(pause => pause.status === 'paused');
   const scheduledPause = pauses.find(pause => pause.status === 'scheduled');
-  const resumedPause = pauses.find(pause => pause.status === 'resumed');
+  const resumedPause = pauses.find(pause =>
+    pause.status === 'resumed' && dateOnly(pause.endsOn).getTime() === dateOnly(today).getTime()
+  );
 
   return {
     id: profile.id,
