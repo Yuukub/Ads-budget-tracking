@@ -14,7 +14,10 @@ import {
 } from '../lib/campaignCycles.js';
 
 const router = Router();
-router.use(authMiddleware);
+router.use(
+  ['/campaigns', '/campaign-periods', '/clients', '/pause-events', '/notifications'],
+  authMiddleware,
+);
 
 function parseMonth(value: unknown): Date | null {
   if (typeof value !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return null;
