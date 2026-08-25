@@ -349,6 +349,7 @@ export interface NoteFormData {
   taskStatus?: NoteTaskStatus | null;
   priority?: NotePriority | null;
   dueOn?: string | null;
+  shares?: Array<{ userId: number; canViewSecret: boolean }>;
 }
 
 export interface NoteFilters {

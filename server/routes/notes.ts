@@ -5,9 +5,6 @@ import { decryptNoteSecret, encryptNoteSecret } from '../lib/noteSecrets.js';
 import { notePermission } from '../lib/notePermissions.js';
 import { AuthRequest, authMiddleware } from '../middleware/auth.js';
 
-const router = Router();
-router.use(['/notes', '/note-share-users'], authMiddleware);
-
 const CATEGORIES = new Set(Object.values(NoteCategory));
 const TASK_STATUSES = new Set(Object.values(NoteTaskStatus));
 const PRIORITIES = new Set(Object.values(NotePriority));
@@ -105,10 +102,33 @@ function serializeNote(note: NoteWithRelations, currentUserId: number, includeSh
   };
 }
 
-async function findAccessibleNote(id: string, userId: number) {
-  const note = await prisma.note.findUnique({ where: { id }, include: noteInclude });
+async function findAccessibleNote(database: typeof prisma | Prisma.TransactionClient, id: string, userId: number) {
+  const note = await database.note.findUnique({ where: { id }, include: noteInclude });
   if (!note || !notePermission(note, userId).canRead) return null;
   return note;
+}
+
+type NoteShareInput = { userId: number; canViewSecret: boolean };
+
+function parseSharePayload(value: unknown, ownerId: number, category: NoteCategory): NoteShareInput[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > 100) throw new Error('รายชื่อผู้รับแชร์ไม่ถูกต้อง');
+  const shares = value.map((item) => {
+    if (!item || typeof item !== 'object') throw new Error('ข้อมูลผู้รับแชร์ไม่ถูกต้อง');
+    const userId = Number((item as Record<string, unknown>).userId);
+    const canViewSecret = (item as Record<string, unknown>).canViewSecret;
+    if (!Number.isInteger(userId) || userId === ownerId || typeof canViewSecret !== 'boolean') throw new Error('ข้อมูลผู้รับแชร์ไม่ถูกต้อง');
+    if (canViewSecret && category !== NoteCategory.ACCESS) throw new Error('สิทธิ์ดูรหัสใช้ได้เฉพาะ Note ประเภทข้อมูลเข้าสู่ระบบ');
+    return { userId, canViewSecret };
+  });
+  if (new Set(shares.map((share) => share.userId)).size !== shares.length) throw new Error('มีผู้รับแชร์ซ้ำกัน');
+  return shares;
+}
+
+async function validateShareUsers(database: typeof prisma | Prisma.TransactionClient, shares: NoteShareInput[]) {
+  if (shares.length === 0) return;
+  const activeUsers = await database.user.findMany({ where: { id: { in: shares.map((share) => share.userId) }, status: 'active' }, select: { id: true } });
+  if (activeUsers.length !== shares.length) throw new Error('ไม่พบผู้รับแชร์ที่ใช้งานอยู่บางราย');
 }
 
 function parseNotePayload(body: Record<string, unknown>, existing?: NoteWithRelations) {
@@ -152,13 +172,17 @@ function parseNotePayload(body: Record<string, unknown>, existing?: NoteWithRela
   };
 }
 
+export function createNotesRouter(database: typeof prisma = prisma) {
+const router = Router();
+router.use(['/notes', '/note-share-users'], authMiddleware);
+
 router.get('/notes', async (req: AuthRequest, res) => {
   try {
     const userId = req.userId!;
     const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 200) : '';
     const category = typeof req.query.category === 'string' && CATEGORIES.has(req.query.category as NoteCategory) ? req.query.category as NoteCategory : undefined;
     const taskStatus = typeof req.query.taskStatus === 'string' && TASK_STATUSES.has(req.query.taskStatus as NoteTaskStatus) ? req.query.taskStatus as NoteTaskStatus : undefined;
-    const tag = typeof req.query.tag === 'string' ? req.query.tag.trim() : '';
+    const tag = typeof req.query.tag === 'string' ? req.query.tag.trim().toLocaleLowerCase() : '';
     const scope = req.query.scope === 'owned' || req.query.scope === 'shared' ? req.query.scope : 'all';
     const overdue = req.query.overdue === 'true';
     const page = Math.max(1, Number.parseInt(String(req.query.page || '1'), 10) || 1);
@@ -173,16 +197,16 @@ router.get('/notes', async (req: AuthRequest, res) => {
     if (q) filters.push({ OR: [
       { title: { contains: q, mode: 'insensitive' } }, { content: { contains: q, mode: 'insensitive' } },
       { clientName: { contains: q, mode: 'insensitive' } }, { host: { contains: q, mode: 'insensitive' } },
-      { username: { contains: q, mode: 'insensitive' } }, { tags: { has: q } },
+      { username: { contains: q, mode: 'insensitive' } }, { tags: { has: q.toLocaleLowerCase() } },
     ] });
     const orderBy: Prisma.NoteOrderByWithRelationInput[] = sort === 'title'
       ? [{ isPinned: 'desc' }, { title: 'asc' }]
       : sort === 'due' ? [{ isPinned: 'desc' }, { dueOn: 'asc' }, { updatedAt: 'desc' }]
       : sort === 'updated' ? [{ isPinned: 'desc' }, { updatedAt: 'desc' }] : [{ isPinned: 'desc' }, { updatedAt: 'desc' }];
     const where = { AND: filters };
-    const [notes, total] = await prisma.$transaction([
-      prisma.note.findMany({ where, include: noteInclude, orderBy, skip: (page - 1) * limit, take: limit }),
-      prisma.note.count({ where }),
+    const [notes, total] = await database.$transaction([
+      database.note.findMany({ where, include: noteInclude, orderBy, skip: (page - 1) * limit, take: limit }),
+      database.note.count({ where }),
     ]);
     res.json({ notes: notes.map((note) => serializeNote(note, userId)), page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) });
   } catch (error) {
@@ -198,12 +222,18 @@ router.post('/notes', async (req: AuthRequest, res) => {
     const secret = req.body?.secret;
     if (secret !== undefined && (typeof secret !== 'string' || secret.length > 2000)) return sendError(res, 400, 'รหัสผ่านไม่ถูกต้อง');
     const encrypted = secret ? encryptNoteSecret(secret) : undefined;
-    const note = await prisma.note.create({ data: {
-      ownerId: req.userId!, category: payload.category, title: payload.title, content: payload.content ?? '', tags: payload.tags ?? [],
-      isPinned: payload.isPinned ?? false, clientName: payload.clientName ?? null, host: payload.host ?? null, loginUrl: payload.loginUrl ?? null, username: payload.username ?? null,
-      taskStatus: payload.taskStatus ?? null, priority: payload.priority ?? null, dueOn: payload.dueOn ?? null, completedAt: payload.completedAt ?? null,
-      ...(encrypted ? { secretCiphertext: encrypted.ciphertext, secretIv: encrypted.iv, secretAuthTag: encrypted.authTag, secretKeyVersion: encrypted.keyVersion } : {}),
-    }, include: noteInclude });
+    const shareInputs = parseSharePayload(req.body?.shares, req.userId!, payload.category) ?? [];
+    const note = await database.$transaction(async (transaction) => {
+      await validateShareUsers(transaction, shareInputs);
+      const created = await transaction.note.create({ data: {
+        ownerId: req.userId!, category: payload.category, title: payload.title, content: payload.content ?? '', tags: payload.tags ?? [],
+        isPinned: payload.isPinned ?? false, clientName: payload.clientName ?? null, host: payload.host ?? null, loginUrl: payload.loginUrl ?? null, username: payload.username ?? null,
+        taskStatus: payload.taskStatus ?? null, priority: payload.priority ?? null, dueOn: payload.dueOn ?? null, completedAt: payload.completedAt ?? null,
+        ...(encrypted ? { secretCiphertext: encrypted.ciphertext, secretIv: encrypted.iv, secretAuthTag: encrypted.authTag, secretKeyVersion: encrypted.keyVersion } : {}),
+      } });
+      if (shareInputs.length > 0) await transaction.noteShare.createMany({ data: shareInputs.map((share) => ({ noteId: created.id, ...share })) });
+      return transaction.note.findUniqueOrThrow({ where: { id: created.id }, include: noteInclude });
+    });
     res.status(201).json(serializeNote(note, req.userId!, true));
   } catch (error) {
     console.error('Failed to create note', error);
@@ -212,20 +242,21 @@ router.post('/notes', async (req: AuthRequest, res) => {
 });
 
 router.get('/notes/:id', async (req: AuthRequest, res) => {
-  const note = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+  const note = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
   if (!note) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
   res.json(serializeNote(note, req.userId!, true));
 });
 
 router.patch('/notes/:id', async (req: AuthRequest, res) => {
   try {
-    const existing = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+    const existing = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
     if (!existing) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
     if (existing.ownerId !== req.userId) return sendError(res, 403, 'ผู้รับแชร์อ่าน Note ได้อย่างเดียว');
     const payload = parseNotePayload(req.body || {}, existing);
     const secret = req.body?.secret;
     if (secret !== undefined && (typeof secret !== 'string' || secret.length > 2000)) return sendError(res, 400, 'รหัสผ่านไม่ถูกต้อง');
     const encrypted = secret ? encryptNoteSecret(secret) : undefined;
+    const shareInputs = parseSharePayload(req.body?.shares, req.userId!, payload.category);
     const data: Prisma.NoteUpdateInput = {};
     for (const [key, value] of Object.entries(payload)) if (value !== undefined) Object.assign(data, { [key]: value });
     if (existing.category === NoteCategory.ACCESS && payload.category !== NoteCategory.ACCESS) {
@@ -233,7 +264,17 @@ router.patch('/notes/:id', async (req: AuthRequest, res) => {
     }
     if (req.body?.clearSecret === true) Object.assign(data, { secretCiphertext: null, secretIv: null, secretAuthTag: null, secretKeyVersion: null });
     if (encrypted) Object.assign(data, { secretCiphertext: encrypted.ciphertext, secretIv: encrypted.iv, secretAuthTag: encrypted.authTag, secretKeyVersion: encrypted.keyVersion });
-    const note = await prisma.note.update({ where: { id: existing.id }, data, include: noteInclude });
+    const note = await database.$transaction(async (transaction) => {
+      if (shareInputs) {
+        await validateShareUsers(transaction, shareInputs);
+        await transaction.noteShare.deleteMany({ where: { noteId: existing.id } });
+        if (shareInputs.length > 0) await transaction.noteShare.createMany({ data: shareInputs.map((share) => ({ noteId: existing.id, ...share })) });
+      } else if (payload.category !== NoteCategory.ACCESS) {
+        await transaction.noteShare.updateMany({ where: { noteId: existing.id }, data: { canViewSecret: false } });
+      }
+      await transaction.note.update({ where: { id: existing.id }, data });
+      return transaction.note.findUniqueOrThrow({ where: { id: existing.id }, include: noteInclude });
+    });
     res.json(serializeNote(note, req.userId!, true));
   } catch (error) {
     console.error('Failed to update note', error);
@@ -242,20 +283,20 @@ router.patch('/notes/:id', async (req: AuthRequest, res) => {
 });
 
 router.delete('/notes/:id', async (req: AuthRequest, res) => {
-  const note = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+  const note = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
   if (!note) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
   if (note.ownerId !== req.userId) return sendError(res, 403, 'ผู้รับแชร์ลบ Note ไม่ได้');
-  await prisma.note.delete({ where: { id: note.id } });
+  await database.note.delete({ where: { id: note.id } });
   res.json({ success: true });
 });
 
 router.get('/notes/:id/secret', async (req: AuthRequest, res) => {
   try {
-    const note = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+    const note = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
     if (!note) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
     if (!notePermission(note, req.userId!).canViewSecret || !note.secretCiphertext || !note.secretIv || !note.secretAuthTag || !note.secretKeyVersion) return sendError(res, 403, 'คุณไม่มีสิทธิ์ดูรหัสผ่านนี้');
     const secret = decryptNoteSecret({ ciphertext: note.secretCiphertext, iv: note.secretIv, authTag: note.secretAuthTag, keyVersion: note.secretKeyVersion });
-    await prisma.noteSecretAccessLog.create({ data: { noteId: note.id, actorUserId: req.userId! } });
+    await database.noteSecretAccessLog.create({ data: { noteId: note.id, actorUserId: req.userId! } });
     res.set('Cache-Control', 'no-store').json({ secret });
   } catch (error) {
     console.error('Failed to reveal note secret', error);
@@ -264,42 +305,47 @@ router.get('/notes/:id/secret', async (req: AuthRequest, res) => {
 });
 
 router.post('/notes/:id/shares', async (req: AuthRequest, res) => {
-  const note = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+  const note = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
   if (!note) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
   if (note.ownerId !== req.userId) return sendError(res, 403, 'เฉพาะเจ้าของ Note เท่านั้นที่แชร์ได้');
   const userId = Number(req.body?.userId);
-  if (!Number.isInteger(userId) || userId === req.userId) return sendError(res, 400, 'ผู้รับแชร์ไม่ถูกต้อง');
-  const user = await prisma.user.findFirst({ where: { id: userId, status: 'active' }, select: { id: true } });
+  if (!Number.isInteger(userId) || userId === req.userId || typeof req.body?.canViewSecret !== 'boolean') return sendError(res, 400, 'ผู้รับแชร์ไม่ถูกต้อง');
+  if (req.body.canViewSecret && note.category !== NoteCategory.ACCESS) return sendError(res, 400, 'สิทธิ์ดูรหัสใช้ได้เฉพาะ Note ประเภทข้อมูลเข้าสู่ระบบ');
+  const user = await database.user.findFirst({ where: { id: userId, status: 'active' }, select: { id: true } });
   if (!user) return sendError(res, 404, 'ไม่พบผู้ใช้ที่ใช้งานอยู่');
-  const share = await prisma.noteShare.upsert({ where: { noteId_userId: { noteId: note.id, userId } }, update: { canViewSecret: Boolean(req.body?.canViewSecret) }, create: { noteId: note.id, userId, canViewSecret: Boolean(req.body?.canViewSecret) }, include: { user: { select: { id: true, name: true, email: true } } } });
+  const share = await database.noteShare.upsert({ where: { noteId_userId: { noteId: note.id, userId } }, update: { canViewSecret: req.body.canViewSecret }, create: { noteId: note.id, userId, canViewSecret: req.body.canViewSecret }, include: { user: { select: { id: true, name: true, email: true } } } });
   res.status(201).json({ userId: share.userId, canViewSecret: share.canViewSecret, createdAt: share.createdAt, user: share.user });
 });
 
 router.patch('/notes/:id/shares/:userId', async (req: AuthRequest, res) => {
-  const note = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+  const note = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
   if (!note) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
   if (note.ownerId !== req.userId) return sendError(res, 403, 'เฉพาะเจ้าของ Note เท่านั้นที่จัดการการแชร์ได้');
   const userId = Number(req.params.userId);
   if (!Number.isInteger(userId) || typeof req.body?.canViewSecret !== 'boolean') return sendError(res, 400, 'ข้อมูลสิทธิ์ไม่ถูกต้อง');
-  const share = await prisma.noteShare.update({ where: { noteId_userId: { noteId: note.id, userId } }, data: { canViewSecret: req.body.canViewSecret }, include: { user: { select: { id: true, name: true, email: true } } } });
+  if (req.body.canViewSecret && note.category !== NoteCategory.ACCESS) return sendError(res, 400, 'สิทธิ์ดูรหัสใช้ได้เฉพาะ Note ประเภทข้อมูลเข้าสู่ระบบ');
+  const share = await database.noteShare.update({ where: { noteId_userId: { noteId: note.id, userId } }, data: { canViewSecret: req.body.canViewSecret }, include: { user: { select: { id: true, name: true, email: true } } } });
   res.json({ userId: share.userId, canViewSecret: share.canViewSecret, createdAt: share.createdAt, user: share.user });
 });
 
 router.delete('/notes/:id/shares/:userId', async (req: AuthRequest, res) => {
-  const note = await findAccessibleNote(routeParam(req.params.id), req.userId!);
+  const note = await findAccessibleNote(database, routeParam(req.params.id), req.userId!);
   if (!note) return sendError(res, 404, 'ไม่พบ Note หรือคุณไม่มีสิทธิ์เข้าถึง');
   if (note.ownerId !== req.userId) return sendError(res, 403, 'เฉพาะเจ้าของ Note เท่านั้นที่จัดการการแชร์ได้');
   const userId = Number(req.params.userId);
   if (!Number.isInteger(userId)) return sendError(res, 400, 'ผู้รับแชร์ไม่ถูกต้อง');
-  await prisma.noteShare.delete({ where: { noteId_userId: { noteId: note.id, userId } } }).catch(() => null);
+  await database.noteShare.delete({ where: { noteId_userId: { noteId: note.id, userId } } }).catch(() => null);
   res.json({ success: true });
 });
 
 router.get('/note-share-users', async (req: AuthRequest, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   if (q.length < 2) return res.json([]);
-  const users = await prisma.user.findMany({ where: { id: { not: req.userId }, status: 'active', OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] }, select: { id: true, name: true, email: true }, take: 10, orderBy: { name: 'asc' } });
+  const users = await database.user.findMany({ where: { id: { not: req.userId }, status: 'active', OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] }, select: { id: true, name: true, email: true }, take: 10, orderBy: { name: 'asc' } });
   res.json(users);
 });
 
-export default router;
+return router;
+}
+
+export default createNotesRouter();

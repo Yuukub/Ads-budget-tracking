@@ -78,7 +78,7 @@
     font-family: 'Google Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-optical-sizing: auto;
     font-variation-settings: "GRAD" 0;
-    background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 50%, #E5E7EB 100%);
+    background: var(--gradient-bg);
     background-attachment: fixed;
   }
 }
@@ -206,5 +206,17 @@
 
   .animate-scale-in {
     animation: scale-in 0.4s ease-out;
+  }
+
+  .dark .bg-amber-50\/40,
+  .dark .bg-blue-50\/40,
+  .dark .bg-violet-50\/40 {
+    background-color: hsl(var(--muted) / 0.45);
+  }
+
+  .dark .border-amber-200,
+  .dark .border-blue-200,
+  .dark .border-violet-200 {
+    border-color: hsl(var(--border));
   }
 }

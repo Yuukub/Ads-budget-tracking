@@ -30,38 +30,42 @@ export function Header() {
               ) : (
                 <span className="text-2xl">📊</span>
               )}
-              <h1 className="text-xl font-bold text-gray-900 truncate max-w-[200px] sm:max-w-none">
+              <h1 className="text-xl font-bold text-foreground truncate max-w-[200px] sm:max-w-none">
                 {settings?.appName || 'Ad Budget Tracker'}
               </h1>
             </Link>
 
             {/* Desktop Navigation */}
             {user && (
-              <nav className="hidden md:flex items-center gap-4">
+              <nav aria-label="เมนูหลัก" className="hidden md:flex items-center gap-4">
                 <Link
                   to="/"
-                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
+                  aria-current={location.pathname === '/' ? 'page' : undefined}
+                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-primary'
                     }`}
                 >
                   หน้าหลัก
                 </Link>
                 <Link
                   to="/budget"
-                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/budget' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
+                  aria-current={location.pathname === '/budget' ? 'page' : undefined}
+                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/budget' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-primary'
                     }`}
                 >
                   บัญชี
                 </Link>
                 <Link
                   to="/history"
-                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/history' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
+                  aria-current={location.pathname === '/history' ? 'page' : undefined}
+                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/history' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-primary'
                     }`}
                 >
                   ประวัติ
                 </Link>
                 <Link
                   to="/notes"
-                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/notes' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
+                  aria-current={location.pathname === '/notes' ? 'page' : undefined}
+                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/notes' ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-primary'
                     }`}
                 >
                   Note
@@ -69,6 +73,7 @@ export function Header() {
                 {user.role === 'admin' && (
                   <Link
                     to="/admin"
+                    aria-current={location.pathname === '/admin' ? 'page' : undefined}
                     className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/admin' ? 'text-purple-600 font-semibold' : 'text-purple-500 hover:text-purple-700'
                       }`}
                   >
@@ -91,7 +96,7 @@ export function Header() {
                 <Share2 size={16} />
                 <span>แชร์</span>
               </Button>
-              <span className="text-gray-600 text-sm font-medium">สวัสดี, {user.name}</span>
+              <span className="text-muted-foreground text-sm font-medium">สวัสดี, {user.name}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -108,7 +113,10 @@ export function Header() {
           {user && (
             <button
               onClick={toggleMenu}
-              className="md:hidden p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label={isMenuOpen ? 'ปิดเมนูหลัก' : 'เปิดเมนูหลัก'}
+              aria-expanded={isMenuOpen}
+              aria-controls="mobile-main-menu"
+              className="md:hidden p-2 text-muted-foreground hover:text-primary hover:bg-muted rounded-lg transition-colors"
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -118,20 +126,21 @@ export function Header() {
 
       {/* Mobile Menu Overlay */}
       {user && isMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white/95 backdrop-blur-lg absolute w-full left-0 animate-slide-up shadow-lg">
+        <div id="mobile-main-menu" className="md:hidden border-t border-border bg-background/95 backdrop-blur-lg absolute w-full left-0 animate-slide-up shadow-lg">
           <div className="px-4 py-4 space-y-4">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-              <span className="text-gray-900 font-medium">เมนู</span>
-              <span className="text-sm text-gray-500">สวัสดี, {user.name}</span>
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <span className="text-foreground font-medium">เมนู</span>
+              <span className="text-sm text-muted-foreground">สวัสดี, {user.name}</span>
             </div>
 
-            <nav className="flex flex-col gap-2">
+            <nav aria-label="เมนูหลักบนมือถือ" className="flex flex-col gap-2">
               <Link
                 to="/"
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={location.pathname === '/' ? 'page' : undefined}
                 className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/'
-                  ? 'bg-blue-50 text-primary'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
               >
                 🏠 หน้าหลัก
@@ -139,9 +148,10 @@ export function Header() {
               <Link
                 to="/budget"
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={location.pathname === '/budget' ? 'page' : undefined}
                 className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/budget'
-                  ? 'bg-blue-50 text-primary'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
               >
                 📑 บัญชี
@@ -149,9 +159,10 @@ export function Header() {
               <Link
                 to="/history"
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={location.pathname === '/history' ? 'page' : undefined}
                 className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/history'
-                  ? 'bg-blue-50 text-primary'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
               >
                 📋 ประวัติ
@@ -159,9 +170,10 @@ export function Header() {
               <Link
                 to="/notes"
                 onClick={() => setIsMenuOpen(false)}
+                aria-current={location.pathname === '/notes' ? 'page' : undefined}
                 className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/notes'
-                  ? 'bg-blue-50 text-primary'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
               >
                 📝 Note
@@ -170,9 +182,10 @@ export function Header() {
                 <Link
                   to="/admin"
                   onClick={() => setIsMenuOpen(false)}
+                  aria-current={location.pathname === '/admin' ? 'page' : undefined}
                   className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin'
-                    ? 'bg-purple-50 text-purple-600'
-                    : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600'
+                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-300'
+                    : 'text-muted-foreground hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-300'
                     }`}
                 >
                   ⚙️ Admin
@@ -180,7 +193,7 @@ export function Header() {
               )}
             </nav>
 
-            <div className="pt-2 border-t border-gray-100 space-y-2">
+            <div className="pt-2 border-t border-border space-y-2">
               <Button
                 variant="outline"
                 size="sm"
