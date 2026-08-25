@@ -22,6 +22,9 @@ model User {
   shareLinks ShareLink[]
   pauseEvents PauseEvent[] @relation("PauseCreatedBy")
   notifications Notification[]
+  ownedNotes Note[] @relation("OwnedNotes")
+  sharedNotes NoteShare[] @relation("SharedNotes")
+  noteSecretAccesses NoteSecretAccessLog[] @relation("NoteSecretAccesses")
 
   @@map("users")
 }
@@ -243,4 +246,82 @@ model ShareAccessLog {
 
   @@index([shareLinkId])
   @@map("share_access_logs")
+}
+
+enum NoteCategory {
+  GENERAL
+  CLIENT_PROJECT
+  ACCESS
+  TASK
+}
+
+enum NoteTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum NotePriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Note {
+  id               String          @id @default(cuid())
+  ownerId          Int             @map("owner_id")
+  category         NoteCategory    @default(GENERAL)
+  title            String
+  content          String          @default("")
+  tags             String[]        @default([])
+  isPinned         Boolean         @default(false) @map("is_pinned")
+  clientName       String?         @map("client_name")
+  host             String?
+  loginUrl         String?         @map("login_url")
+  username         String?
+  secretCiphertext String?         @map("secret_ciphertext")
+  secretIv         String?         @map("secret_iv")
+  secretAuthTag    String?         @map("secret_auth_tag")
+  secretKeyVersion Int?            @map("secret_key_version")
+  taskStatus       NoteTaskStatus? @map("task_status")
+  priority         NotePriority?   @map("priority")
+  dueOn            DateTime?       @map("due_on") @db.Date
+  completedAt      DateTime?       @map("completed_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  owner            User            @relation("OwnedNotes", fields: [ownerId], references: [id], onDelete: Cascade)
+  shares           NoteShare[]
+  secretAccessLogs NoteSecretAccessLog[]
+
+  @@index([ownerId, isPinned, updatedAt])
+  @@index([ownerId, category, updatedAt])
+  @@index([ownerId, taskStatus, dueOn])
+  @@index([updatedAt])
+  @@map("notes")
+}
+
+model NoteShare {
+  noteId         String   @map("note_id")
+  userId         Int      @map("user_id")
+  canViewSecret  Boolean  @default(false) @map("can_view_secret")
+  createdAt      DateTime @default(now()) @map("created_at")
+  note           Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user           User     @relation("SharedNotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, userId])
+  @@index([userId])
+  @@map("note_shares")
+}
+
+model NoteSecretAccessLog {
+  id            String   @id @default(cuid())
+  noteId        String   @map("note_id")
+  actorUserId   Int      @map("actor_user_id")
+  accessedAt    DateTime @default(now()) @map("accessed_at")
+  note          Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  actor         User     @relation("NoteSecretAccesses", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, accessedAt])
+  @@index([actorUserId, accessedAt])
+  @@map("note_secret_access_logs")
 }

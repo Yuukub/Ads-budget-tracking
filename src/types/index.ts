@@ -290,3 +290,83 @@ export interface SharedDataResponse {
   ownerName: string;
   data: Client[] | BudgetLog[];
 }
+
+export type NoteCategory = 'GENERAL' | 'CLIENT_PROJECT' | 'ACCESS' | 'TASK';
+export type NoteTaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
+export type NotePriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface NoteShareUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface NoteShare {
+  userId: number;
+  canViewSecret: boolean;
+  createdAt: string;
+  user: NoteShareUser;
+}
+
+export interface AppNote {
+  id: string;
+  category: NoteCategory;
+  title: string;
+  content: string;
+  tags: string[];
+  isPinned: boolean;
+  clientName: string | null;
+  host: string | null;
+  loginUrl: string | null;
+  username: string | null;
+  hasSecret: boolean;
+  taskStatus: NoteTaskStatus | null;
+  priority: NotePriority | null;
+  dueOn: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  owner: NoteShareUser;
+  isOwner: boolean;
+  canEdit: boolean;
+  canViewSecret: boolean;
+  isShared: boolean;
+  shares?: NoteShare[];
+}
+
+export interface NoteFormData {
+  category: NoteCategory;
+  title: string;
+  content: string;
+  tags: string[];
+  isPinned: boolean;
+  clientName?: string | null;
+  host?: string | null;
+  loginUrl?: string | null;
+  username?: string | null;
+  secret?: string;
+  clearSecret?: boolean;
+  taskStatus?: NoteTaskStatus | null;
+  priority?: NotePriority | null;
+  dueOn?: string | null;
+}
+
+export interface NoteFilters {
+  q?: string;
+  category?: NoteCategory;
+  taskStatus?: NoteTaskStatus;
+  tag?: string;
+  scope?: 'all' | 'owned' | 'shared';
+  overdue?: boolean;
+  sort?: 'pinned' | 'updated' | 'due' | 'title';
+  page?: number;
+  limit?: number;
+}
+
+export interface NotesResponse {
+  notes: AppNote[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}

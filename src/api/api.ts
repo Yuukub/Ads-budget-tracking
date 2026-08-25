@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, RebaselineFormData, AppNotification } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, RebaselineFormData, AppNotification, AppNote, NoteFilters, NoteFormData, NoteShare, NoteShareUser, NotesResponse } from '../types';
 
 const API_URL = '/api';
 
@@ -307,6 +307,51 @@ export const shareApi = {
     }
     const { data } = await api.get<SharedDataResponse>(`/share/${token}/data?${params.toString()}`);
     return data;
+  },
+};
+
+export const notesApi = {
+  getAll: async (filters: NoteFilters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== false && value !== '') params.set(key, String(value));
+    });
+    const { data } = await api.get<NotesResponse>(`/notes${params.size ? `?${params.toString()}` : ''}`);
+    return data;
+  },
+  getOne: async (id: string) => {
+    const { data } = await api.get<AppNote>(`/notes/${id}`);
+    return data;
+  },
+  create: async (formData: NoteFormData) => {
+    const { data } = await api.post<AppNote>('/notes', formData);
+    return data;
+  },
+  update: async (id: string, formData: Partial<NoteFormData>) => {
+    const { data } = await api.patch<AppNote>(`/notes/${id}`, formData);
+    return data;
+  },
+  delete: async (id: string) => {
+    await api.delete(`/notes/${id}`);
+  },
+  revealSecret: async (id: string) => {
+    const { data } = await api.get<{ secret: string }>(`/notes/${id}/secret`, { headers: { 'Cache-Control': 'no-store' } });
+    return data;
+  },
+  searchUsers: async (q: string) => {
+    const { data } = await api.get<NoteShareUser[]>(`/note-share-users?q=${encodeURIComponent(q)}`);
+    return data;
+  },
+  addShare: async (noteId: string, userId: number, canViewSecret: boolean) => {
+    const { data } = await api.post<NoteShare>(`/notes/${noteId}/shares`, { userId, canViewSecret });
+    return data;
+  },
+  updateShare: async (noteId: string, userId: number, canViewSecret: boolean) => {
+    const { data } = await api.patch<NoteShare>(`/notes/${noteId}/shares/${userId}`, { canViewSecret });
+    return data;
+  },
+  deleteShare: async (noteId: string, userId: number) => {
+    await api.delete(`/notes/${noteId}/shares/${userId}`);
   },
 };
 

@@ -59,6 +59,13 @@ export function Header() {
                 >
                   ประวัติ
                 </Link>
+                <Link
+                  to="/notes"
+                  className={`text-sm font-medium transition-all duration-200 ${location.pathname === '/notes' ? 'text-primary font-semibold' : 'text-gray-600 hover:text-primary'
+                    }`}
+                >
+                  Note
+                </Link>
                 {user.role === 'admin' && (
                   <Link
                     to="/admin"
@@ -148,6 +155,16 @@ export function Header() {
                   }`}
               >
                 📋 ประวัติ
+              </Link>
+              <Link
+                to="/notes"
+                onClick={() => setIsMenuOpen(false)}
+                className={`p-3 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/notes'
+                  ? 'bg-blue-50 text-primary'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                  }`}
+              >
+                📝 Note
               </Link>
               {user.role === 'admin' && (
                 <Link

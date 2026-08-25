@@ -18,6 +18,7 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   // Create/Edit form state
   const [editingLink, setEditingLink] = useState<ShareLink | null>(null);
@@ -114,11 +115,31 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
     }
   };
 
-  const copyToClipboard = (token: string, id: string) => {
+  const copyToClipboard = async (token: string, id: string) => {
     const url = `${window.location.origin}/s/${token}`;
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!copied) throw new Error('Clipboard fallback failed');
+      }
+
+      setCopiedId(id);
+      setCopyMessage(`คัดลอกลิงก์แล้ว: ${url}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy share link:', error);
+      setCopyMessage('คัดลอกลิงก์ไม่สำเร็จ กรุณาคัดลอก URL ที่แสดงด้านล่างด้วยตัวเอง');
+    }
   };
 
   const loadAccessLogs = async (linkId: string) => {
@@ -211,6 +232,11 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
 
         {/* Content */}
         <div className="max-h-[60vh] overflow-y-auto p-4">
+          {copyMessage && (
+            <div role="status" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 break-all">
+              {copyMessage}
+            </div>
+          )}
           {activeTab === 'create' && (
             <>
               {createdLink ? (
@@ -343,6 +369,15 @@ export function ShareLinkModal({ isOpen, onClose }: ShareLinkModalProps) {
                             {link.expiresAt && <div>หมดอายุ: {formatDate(link.expiresAt)}</div>}
                             {link.hasPassword && <div>🔒 มีรหัสผ่าน</div>}
                           </div>
+                          <a
+                            href={`${window.location.origin}/s/${link.token}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 block truncate text-xs text-primary underline"
+                            title={`${window.location.origin}/s/${link.token}`}
+                          >
+                            {window.location.origin}/s/{link.token}
+                          </a>
                         </div>
                         <div className="flex items-center gap-1">
                           <button

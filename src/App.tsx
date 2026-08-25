@@ -8,6 +8,7 @@ import { BudgetLogPage } from './pages/BudgetLogPage';
 import { AdminPage } from './pages/AdminPage';
 import { SharedViewPage } from './pages/SharedViewPage';
 import { SharedBudgetPage } from './pages/SharedBudgetPage';
+import { NotesPage } from './pages/NotesPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -105,6 +106,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <HistoryPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/notes"
+        element={
+          <PrivateRoute>
+            <NotesPage />
           </PrivateRoute>
         }
       />
