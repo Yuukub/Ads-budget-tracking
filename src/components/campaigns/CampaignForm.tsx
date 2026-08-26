@@ -13,6 +13,17 @@ function endOfCurrentMonth(): string {
   return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
 }
 
+function todayDateInput(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function defaultStartDate(client: Client): string {
+  const today = todayDateInput();
+  const periodStart = client.budgetPeriodStartsOn?.slice(0, 10);
+  return periodStart && periodStart > today ? periodStart : today;
+}
+
 interface CampaignFormProps {
   campaign?: Campaign;
   client: Client;
@@ -24,8 +35,11 @@ interface CampaignFormProps {
 export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }: CampaignFormProps) {
   const [name, setName] = useState(campaign?.name || '');
   const [budget, setBudget] = useState(campaign?.budget?.toString() || '');
+  const [startsOn, setStartsOn] = useState(
+    campaign?.startsOn?.slice(0, 10) || defaultStartDate(client)
+  );
   const [endDate, setEndDate] = useState(
-    campaign?.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : endOfCurrentMonth()
+    campaign?.endDate?.slice(0, 10) || client.budgetPeriodEndsOn?.slice(0, 10) || endOfCurrentMonth()
   );
   const [platform, setPlatform] = useState<Platform>(campaign?.platform || 'google_ads');
   const [googleAdsType, setGoogleAdsType] = useState<GoogleAdsType>(
@@ -49,7 +63,8 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
     if (campaign) {
       setName(campaign.name);
       setBudget(campaign.budget.toString());
-      setEndDate(new Date(campaign.endDate).toISOString().split('T')[0]);
+      setStartsOn(campaign.startsOn.slice(0, 10));
+      setEndDate(campaign.endDate.slice(0, 10));
       setPlatform(campaign.platform);
       if (campaign.googleAdsType) {
         setGoogleAdsType(campaign.googleAdsType);
@@ -89,10 +104,31 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
       return;
     }
 
+    if (!startsOn) {
+      setError('กรุณาเลือกวันเริ่มยิงแอด');
+      return;
+    }
+
+    if (client.budgetPeriodStartsOn && startsOn < client.budgetPeriodStartsOn.slice(0, 10)) {
+      setError('วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน');
+      return;
+    }
+
+    if (client.budgetPeriodEndsOn && startsOn > client.budgetPeriodEndsOn.slice(0, 10)) {
+      setError('วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน');
+      return;
+    }
+
+    if (startsOn > endDate) {
+      setError('วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด');
+      return;
+    }
+
     onSubmit({
       clientId: client.id,
       name: name.trim(),
       budget: budgetNum,
+      startsOn,
       endDate,
       platform,
       googleAdsType: platform === 'google_ads' ? googleAdsType : undefined,
@@ -123,11 +159,13 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
       return { activeRunDays: 0, recommendedDaily: 0, remaining };
     }
 
-    const activeRunDays = countActiveDays(endDate, activeDays);
+    const today = todayDateInput();
+    const calculationStart = startsOn > today ? new Date(`${startsOn}T00:00:00`) : new Date(`${today}T00:00:00`);
+    const activeRunDays = countActiveDays(endDate, activeDays, [], calculationStart);
     const recommendedDaily = activeRunDays > 0 ? Math.round(remaining / activeRunDays) : 0;
 
     return { activeRunDays, recommendedDaily, remaining };
-  }, [budget, endDate, activeDays, campaign?.spent]);
+  }, [budget, startsOn, endDate, activeDays, campaign?.spent]);
 
   // Calculate what will return to unallocated if budget is reduced
   const budgetNum = parseFloat(budget) || 0;
@@ -176,13 +214,25 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
         )}
       </div>
 
-      <Input
-        label="วันหมดอายุ (ค่าเริ่มต้น: สิ้นเดือน)"
-        type="date"
-        value={endDate}
-        onChange={(e) => setEndDate(e.target.value)}
-        required
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Input
+          label="วันเริ่มยิงแอด"
+          type="date"
+          value={startsOn}
+          min={client.budgetPeriodStartsOn?.slice(0, 10)}
+          max={client.budgetPeriodEndsOn?.slice(0, 10) || endDate}
+          onChange={(e) => setStartsOn(e.target.value)}
+          required
+        />
+        <Input
+          label="วันสิ้นสุด (ค่าเริ่มต้น: สิ้นเดือน)"
+          type="date"
+          value={endDate}
+          min={startsOn}
+          onChange={(e) => setEndDate(e.target.value)}
+          required
+        />
+      </div>
 
       {/* Day Selector */}
       <div>

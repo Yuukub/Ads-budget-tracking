@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest, adminCheckMiddleware } from '../middleware/auth.js';
 import { CAMPAIGN_CYCLES_ENABLED, bangkokToday, createRolloverNotification, getCycleClients, initialBudgetPeriodData, monthEnd, monthStart, toClientCampaign } from '../lib/campaignCycles.js';
+import { normalizeWebsiteUrl } from '../lib/clientWebsite.js';
 
 const router = Router();
 
@@ -360,7 +361,7 @@ router.post('/:id/reset-budget', async (req: AuthRequest, res: Response) => {
 // Admin can create client for other users by providing ?userId=xxx
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { name, totalBudget, logo } = req.body;
+    const { name, totalBudget, logo, websiteUrl } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
@@ -384,11 +385,19 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       effectiveUserId = targetUserId;
     }
 
+    let normalizedWebsiteUrl: string | null;
+    try {
+      normalizedWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
+    } catch (error) {
+      return res.status(400).json({ error: error instanceof Error ? error.message : 'URL เว็บไซต์ไม่ถูกต้อง' });
+    }
+
     const client = await prisma.client.create({
       data: {
         name,
         totalBudget: totalBudget || 0,
         logo: logo || null,
+        websiteUrl: normalizedWebsiteUrl,
         carryOver: 0,
         userId: effectiveUserId,
       },
@@ -420,8 +429,17 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 // Admin can update other users' clients by providing ?userId=xxx
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const { name, totalBudget, logo } = req.body;
+    const { name, totalBudget, logo, websiteUrl } = req.body;
     const clientId = parseInt(req.params.id as string);
+
+    let normalizedWebsiteUrl: string | null | undefined;
+    if (websiteUrl !== undefined) {
+      try {
+        normalizedWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
+      } catch (error) {
+        return res.status(400).json({ error: error instanceof Error ? error.message : 'URL เว็บไซต์ไม่ถูกต้อง' });
+      }
+    }
 
     // Check if admin is updating another user's data
     const targetUserId = req.query.userId ? parseInt(req.query.userId as string) : null;
@@ -461,6 +479,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
           data: {
             ...(name ? { name } : {}),
             ...(logo !== undefined ? { logo: logo || null } : {}),
+            ...(websiteUrl !== undefined ? { websiteUrl: normalizedWebsiteUrl } : {}),
             ...(totalBudget !== undefined ? { totalBudget: nextBudget } : {}),
           },
         });
@@ -506,6 +525,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
         ...(name && { name }),
         ...(totalBudget !== undefined && { totalBudget }),
         ...(logo !== undefined && { logo: logo || null }),
+        ...(websiteUrl !== undefined && { websiteUrl: normalizedWebsiteUrl }),
       },
       include: {
         campaigns: {

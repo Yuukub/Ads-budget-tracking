@@ -48,6 +48,7 @@ model Client {
   userId      Int        @map("user_id")
   name        String
   logo        String?    // URL หรือ path ของ logo
+  websiteUrl  String?    @map("website_url")
   totalBudget Float      @default(0) @map("total_budget")
   carryOver   Float      @default(0) @map("carry_over") // ยอดยกมา (ลบ = ใช้เกิน)
   createdAt   DateTime   @default(now()) @map("created_at")
@@ -67,6 +68,7 @@ model Campaign {
   name          String
   budget        Float     @default(0)
   spent         Float     @default(0)
+  startsOn      DateTime  @map("starts_on") @db.Date
   endDate       DateTime  @map("end_date")
   platform      String    // 'google_ads' or 'facebook_ads'
   googleAdsType String?   @map("google_ads_type") // 'search', 'display', 'pmax'

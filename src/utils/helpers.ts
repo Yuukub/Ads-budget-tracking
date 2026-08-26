@@ -1,8 +1,8 @@
 import { Campaign, CampaignStatus, CampaignWithStatus, Platform, GoogleAdsType, DayOfWeek, DEFAULT_ACTIVE_DAYS, PauseEvent } from '../types';
 
-export function calculateDaysRemaining(endDate: string): number {
+export function calculateDaysRemaining(endDate: string, fromDate = new Date()): number {
   const end = new Date(endDate);
-  const today = new Date();
+  const today = new Date(fromDate);
   today.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
@@ -10,7 +10,14 @@ export function calculateDaysRemaining(endDate: string): number {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-export function getCampaignStatus(daysRemaining: number): CampaignStatus {
+function localDateFromDateOnly(value: string): Date {
+  return new Date(`${value.slice(0, 10)}T00:00:00`);
+}
+
+export function getCampaignStatus(daysRemaining: number, startsOn?: string, today = new Date()): CampaignStatus {
+  const current = new Date(today);
+  current.setHours(0, 0, 0, 0);
+  if (startsOn && localDateFromDateOnly(startsOn) > current) return 'scheduled';
   if (daysRemaining <= 0) return 'expired';
   if (daysRemaining <= 7) return 'expiring_soon';
   return 'active';
@@ -82,17 +89,21 @@ export function formatActiveDays(activeDays: DayOfWeek[] | null): string {
 // ส่งออก dayLabels เพื่อใช้ใน UI
 export { dayLabels };
 
-export function enrichCampaign(campaign: Campaign): CampaignWithStatus {
-  const daysRemaining = calculateDaysRemaining(campaign.endDate);
+export function enrichCampaign(campaign: Campaign, fromDate = new Date()): CampaignWithStatus {
+  const daysRemaining = calculateDaysRemaining(campaign.endDate, fromDate);
   const remaining = campaign.budget - campaign.spent;
-  const activeRunDays = countActiveDays(campaign.endDate, campaign.activeDays, campaign.pauseEvents);
+  const today = new Date(fromDate);
+  today.setHours(0, 0, 0, 0);
+  const startsOn = localDateFromDateOnly(campaign.startsOn);
+  const calculationStart = startsOn > today ? startsOn : today;
+  const activeRunDays = countActiveDays(campaign.endDate, campaign.activeDays, campaign.pauseEvents, calculationStart);
   const recommendedDailyBudget = activeRunDays > 0 ? Math.round(remaining / activeRunDays) : 0;
 
   return {
     ...campaign,
     remaining,
     daysRemaining,
-    status: getCampaignStatus(daysRemaining),
+    status: getCampaignStatus(daysRemaining, campaign.startsOn, today),
     activeRunDays,
     recommendedDailyBudget,
   };
@@ -130,6 +141,8 @@ export function formatPlatform(platform: Platform, googleType?: GoogleAdsType | 
 
 export function getStatusColor(status: CampaignStatus): string {
   switch (status) {
+    case 'scheduled':
+      return 'bg-blue-100 text-blue-800';
     case 'active':
       return 'bg-green-100 text-green-800';
     case 'expiring_soon':
@@ -141,6 +154,8 @@ export function getStatusColor(status: CampaignStatus): string {
 
 export function getStatusEmoji(status: CampaignStatus): string {
   switch (status) {
+    case 'scheduled':
+      return '🔵';
     case 'active':
       return '🟢';
     case 'expiring_soon':

@@ -78,7 +78,20 @@ export function ClientCard({
               />
             ) : null}
             <span className={`text-xl ${client.logo ? 'hidden' : ''}`}>👤</span>
-            <h3 className="text-lg font-semibold text-foreground">{client.name}</h3>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h3 className="text-lg font-semibold text-foreground">{client.name}</h3>
+              {client.websiteUrl && (
+                <a
+                  href={client.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                  title={`เปิดเว็บไซต์ ${client.name}`}
+                >
+                  🌐 เว็บไซต์
+                </a>
+              )}
+            </div>
           </div>
           {!readOnly && (
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">

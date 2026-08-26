@@ -18,6 +18,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
   const [name, setName] = useState(client?.name || '');
   const [totalBudget, setTotalBudget] = useState(client?.totalBudget?.toString() || '');
   const [logo, setLogo] = useState(client?.logo || '');
+  const [websiteUrl, setWebsiteUrl] = useState(client?.websiteUrl || '');
   const [logoInputType, setLogoInputType] = useState<LogoInputType>('upload');
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
@@ -31,6 +32,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
       setName(client.name);
       setTotalBudget(client.totalBudget.toString());
       setLogo(client.logo || '');
+      setWebsiteUrl(client.websiteUrl || '');
     }
   }, [client]);
 
@@ -97,7 +99,12 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
       return;
     }
 
-    onSubmit({ name: name.trim(), totalBudget: budget, logo: logo || null });
+    if (websiteUrl.trim().length > 2048) {
+      setError('URL เว็บไซต์ต้องไม่เกิน 2,048 ตัวอักษร');
+      return;
+    }
+
+    onSubmit({ name: name.trim(), totalBudget: budget, logo: logo || null, websiteUrl: websiteUrl.trim() || null });
   };
 
   const newUnallocated = isEdit
@@ -128,6 +135,16 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
         onChange={(e) => setTotalBudget(e.target.value)}
         placeholder="100000"
         min={0}
+      />
+
+      <Input
+        label="เว็บไซต์ลูกค้า (ไม่บังคับ)"
+        type="text"
+        inputMode="url"
+        value={websiteUrl}
+        onChange={(e) => setWebsiteUrl(e.target.value)}
+        placeholder="example.com"
+        maxLength={2048}
       />
 
       {/* Logo Input */}

@@ -27,7 +27,7 @@ function parseMonth(value: unknown): Date | null {
 function parseDate(value: unknown): Date | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
 }
 
 async function getOwnedClient(clientId: number, userId: number) {
@@ -96,11 +96,12 @@ async function createPause(clientId: number, profileIds: number[], body: Record<
 router.post('/campaigns', async (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!requireV2(next, res)) return;
   try {
-    const { clientId, name, budget, endDate, platform, googleAdsType, activeDays } = req.body;
+    const { clientId, name, budget, startsOn, endDate, platform, googleAdsType, activeDays } = req.body;
     const client = await getOwnedClient(Number(clientId), req.userId!);
     if (!client || !name || !['google_ads', 'facebook_ads'].includes(platform)) return res.status(400).json({ error: 'ข้อมูลแคมเปญไม่ถูกต้อง' });
     const amount = Number(budget);
-    const end = parseDate(endDate) || monthEnd(bangkokToday());
+    const requestedEnd = endDate === undefined ? null : parseDate(endDate);
+    if (endDate !== undefined && !requestedEnd) return res.status(400).json({ error: 'วันสิ้นสุดไม่ถูกต้อง' });
     if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'งบแคมเปญต้องมากกว่า 0' });
     let cycle = await findCurrentOpenCycle(client.id);
     if (!cycle) {
@@ -122,14 +123,26 @@ router.post('/campaigns', async (req: AuthRequest, res: Response, next: NextFunc
         if (!cycle) throw error;
       }
     }
+    const today = bangkokToday();
+    if (today > cycle.endsOn) {
+      return res.status(400).json({ error: 'รอบงบปัจจุบันสิ้นสุดแล้ว กรุณาเปิดรอบใหม่ก่อนเพิ่มแคมเปญ' });
+    }
+    const defaultStart = today < cycle.startsOn ? cycle.startsOn : today;
+    const start = startsOn === undefined ? defaultStart : parseDate(startsOn);
+    const end = requestedEnd ?? cycle.endsOn;
+    if (!start) return res.status(400).json({ error: 'วันเริ่มยิงแอดไม่ถูกต้อง' });
+    if (start < cycle.startsOn || start > cycle.endsOn) {
+      return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน' });
+    }
+    if (start > end) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
     const available = budgetPeriodTotals(cycle.baseBudget, cycle.carryIn, cycle.campaigns).unallocated;
     if (amount > available) return res.status(400).json({ error: `งบแคมเปญเกินงบที่เหลือ (${available.toFixed(2)})` });
     const created = await prisma.$transaction(async tx => {
       const profile = await tx.campaignProfile.create({ data: { clientId: client.id, name: String(name).trim(), platform, googleAdsType: platform === 'google_ads' ? googleAdsType || null : null, activeDays: activeDays ? JSON.stringify(activeDays) : null } });
-      const period = await tx.campaignPeriod.create({ data: { campaignProfileId: profile.id, clientBudgetPeriodId: cycle.id, budget: amount, startsOn: bangkokToday(), endDate: end } });
+      const period = await tx.campaignPeriod.create({ data: { campaignProfileId: profile.id, clientBudgetPeriodId: cycle.id, budget: amount, startsOn: start, endDate: end } });
       return { profile, period };
     });
-    return res.status(201).json({ ...created.profile, budget: created.period.budget, spent: created.period.spent, endDate: created.period.endDate, periodId: created.period.id, activeDays });
+    return res.status(201).json({ ...created.profile, budget: created.period.budget, spent: created.period.spent, startsOn: created.period.startsOn, endDate: created.period.endDate, periodId: created.period.id, activeDays });
   } catch (error) {
     console.error('Create V2 campaign error:', error);
     return res.status(500).json({ error: 'Failed to create campaign' });
@@ -148,18 +161,24 @@ router.put('/campaigns/:id', async (req: AuthRequest, res: Response, next: NextF
     if (!Number.isFinite(requestedBudget) || requestedBudget < current.spent || requestedBudget + allocatedElsewhere > current.clientBudgetPeriod.baseBudget + current.clientBudgetPeriod.carryIn) {
       return res.status(400).json({ error: 'งบแคมเปญไม่ถูกต้องหรือเกินงบที่ใช้ได้' });
     }
-    const endDate = req.body.endDate ? parseDate(req.body.endDate) : current.endDate;
+    const endDate = req.body.endDate === undefined ? current.endDate : parseDate(req.body.endDate);
     if (!endDate) return res.status(400).json({ error: 'วันสิ้นสุดไม่ถูกต้อง' });
+    const startsOn = req.body.startsOn === undefined ? current.startsOn : parseDate(req.body.startsOn);
+    if (!startsOn) return res.status(400).json({ error: 'วันเริ่มยิงแอดไม่ถูกต้อง' });
+    if (startsOn < current.clientBudgetPeriod.startsOn || startsOn > current.clientBudgetPeriod.endsOn) {
+      return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน' });
+    }
+    if (startsOn > endDate) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
     const updated = await prisma.$transaction(async tx => {
       const campaign = await tx.campaignProfile.update({ where: { id: profile.id }, data: {
         ...(req.body.name ? { name: String(req.body.name).trim() } : {}),
         ...(req.body.platform ? { platform: req.body.platform, googleAdsType: req.body.platform === 'google_ads' ? req.body.googleAdsType || null : null } : {}),
         ...(req.body.activeDays !== undefined ? { activeDays: req.body.activeDays ? JSON.stringify(req.body.activeDays) : null } : {}),
       } });
-      const period = await tx.campaignPeriod.update({ where: { id: current.id }, data: { budget: requestedBudget, endDate } });
+      const period = await tx.campaignPeriod.update({ where: { id: current.id }, data: { budget: requestedBudget, startsOn, endDate } });
       return { campaign, period };
     });
-    return res.json({ ...updated.campaign, budget: updated.period.budget, spent: updated.period.spent, endDate: updated.period.endDate, periodId: updated.period.id, activeDays: updated.campaign.activeDays ? JSON.parse(updated.campaign.activeDays) : null });
+    return res.json({ ...updated.campaign, budget: updated.period.budget, spent: updated.period.spent, startsOn: updated.period.startsOn, endDate: updated.period.endDate, periodId: updated.period.id, activeDays: updated.campaign.activeDays ? JSON.parse(updated.campaign.activeDays) : null });
   } catch (error) {
     console.error('Update V2 campaign error:', error);
     return res.status(500).json({ error: 'Failed to update campaign' });
@@ -341,6 +360,20 @@ router.post('/clients/:id/periods/rollover', async (req: AuthRequest, res: Respo
     }
 
     const nextEnd = monthEnd(targetMonth);
+    const preparedCampaigns: Array<{ campaignId: number; budget: number; startsOn: Date; endDate: Date }> = [];
+    for (const entry of continuing) {
+      const campaignId = Number(entry.campaignId);
+      const previous = current.campaigns.find(period => period.campaignProfileId === campaignId)!;
+      const startsOn = entry.startsOn === undefined ? targetMonth : parseDate(entry.startsOn);
+      const endDate = entry.endDate === undefined ? shiftEndDateToMonth(previous.endDate, targetMonth) : parseDate(entry.endDate);
+      if (!startsOn) return res.status(400).json({ error: 'วันเริ่มยิงแอดในรอบใหม่ไม่ถูกต้อง' });
+      if (!endDate) return res.status(400).json({ error: 'วันสิ้นสุดแคมเปญในรอบใหม่ไม่ถูกต้อง' });
+      if (startsOn < targetMonth || startsOn > nextEnd) {
+        return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องอยู่ภายในเดือนรอบใหม่' });
+      }
+      if (startsOn > endDate) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
+      preparedCampaigns.push({ campaignId, budget: Number(entry.budget), startsOn, endDate });
+    }
     const result = await prisma.$transaction(async tx => {
       await tx.campaignPeriod.updateMany({ where: { clientBudgetPeriodId: current.id, status: 'OPEN' }, data: { status: 'CLOSED', closedAt: new Date() } });
       await tx.clientBudgetPeriod.update({ where: { id: current.id }, data: { status: 'CLOSED', carryOut, closedAt: new Date() } });
@@ -348,16 +381,13 @@ router.post('/clients/:id/periods/rollover', async (req: AuthRequest, res: Respo
         data: { clientId, month: targetMonth, baseBudget, carryIn: carryOut, startsOn: targetMonth, endsOn: nextEnd },
       });
 
-      for (const entry of continuing) {
-        const previous = current.campaigns.find(period => period.campaignProfileId === Number(entry.campaignId))!;
-        const explicitEnd = parseDate(entry.endDate);
-        const endDate = explicitEnd || shiftEndDateToMonth(previous.endDate, targetMonth);
-        if (endDate < targetMonth) throw new Error('วันสิ้นสุดของแคมเปญต้องอยู่ในหรือหลังเดือนรอบใหม่');
+      for (const entry of preparedCampaigns) {
+        const previous = current.campaigns.find(period => period.campaignProfileId === entry.campaignId)!;
         await tx.campaignProfile.update({ where: { id: previous.campaignProfileId }, data: { isActive: true } });
-        await tx.campaignPeriod.create({ data: { campaignProfileId: previous.campaignProfileId, clientBudgetPeriodId: next.id, budget: Number(entry.budget), startsOn: targetMonth, endDate } });
+        await tx.campaignPeriod.create({ data: { campaignProfileId: previous.campaignProfileId, clientBudgetPeriodId: next.id, budget: entry.budget, startsOn: entry.startsOn, endDate: entry.endDate } });
       }
 
-      const continuedIds = new Set(continuing.map((entry: any) => Number(entry.campaignId)));
+      const continuedIds = new Set(preparedCampaigns.map(entry => entry.campaignId));
       const stoppedIds = current.campaigns.filter(period => !continuedIds.has(period.campaignProfileId)).map(period => period.campaignProfileId);
       if (stoppedIds.length) await tx.campaignProfile.updateMany({ where: { id: { in: stoppedIds } }, data: { isActive: false } });
       await tx.notification.updateMany({ where: { entityType: 'CLIENT_BUDGET_PERIOD', entityId: String(current.id), resolvedAt: null }, data: { resolvedAt: new Date() } });

@@ -1,6 +1,6 @@
 export type Platform = 'google_ads' | 'facebook_ads';
 export type GoogleAdsType = 'search' | 'display' | 'pmax';
-export type CampaignStatus = 'active' | 'expiring_soon' | 'expired';
+export type CampaignStatus = 'scheduled' | 'active' | 'expiring_soon' | 'expired';
 export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 // ค่าเริ่มต้นวันที่เปิดแอด (จันทร์-เสาร์)
@@ -23,6 +23,7 @@ export interface Campaign {
   name: string;
   budget: number;
   spent: number;
+  startsOn: string;
   endDate: string;
   platform: Platform;
   googleAdsType: GoogleAdsType | null;
@@ -52,6 +53,7 @@ export interface Client {
   userId: number;
   name: string;
   logo: string | null; // URL หรือ path ของ logo
+  websiteUrl: string | null;
   totalBudget: number;
   carryOver: number; // ยอดยกมา (ลบ = ใช้เกิน)
   createdAt: string;
@@ -63,6 +65,7 @@ export interface Client {
   effectiveBudget: number; // งบที่ใช้ได้จริง = totalBudget + carryOver
   budgetPeriodId?: number;
   budgetPeriodMonth?: string;
+  budgetPeriodStartsOn?: string;
   budgetPeriodEndsOn?: string;
   isRolloverDue?: boolean;
 }
@@ -87,6 +90,7 @@ export interface RolloverCampaignEntry {
   campaignId: number;
   continue: boolean;
   budget: number;
+  startsOn?: string;
   endDate?: string;
 }
 
@@ -116,12 +120,14 @@ export interface ClientFormData {
   name: string;
   totalBudget: number;
   logo?: string | null;
+  websiteUrl?: string | null;
 }
 
 export interface CampaignFormData {
   clientId: number;
   name: string;
   budget: number;
+  startsOn: string;
   endDate: string;
   platform: Platform;
   googleAdsType?: GoogleAdsType;

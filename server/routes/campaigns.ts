@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { bangkokToday } from '../lib/campaignCycles.js';
 
 const router = Router();
 
@@ -44,15 +45,26 @@ async function checkIsAdmin(userId: number): Promise<boolean> {
 // Valid days of week
 const validDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
+function parseDate(value: unknown): Date | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
+}
+
 // Create campaign
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { clientId, name, budget, endDate, platform, googleAdsType, activeDays } = req.body;
+    const { clientId, name, budget, startsOn, endDate, platform, googleAdsType, activeDays } = req.body;
 
     // Validate required fields
     if (!clientId || !name || budget === undefined || !endDate || !platform) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    const parsedEndDate = parseDate(endDate);
+    const parsedStartsOn = startsOn === undefined ? bangkokToday() : parseDate(startsOn);
+    if (!parsedEndDate || !parsedStartsOn) return res.status(400).json({ error: 'วันที่แคมเปญไม่ถูกต้อง' });
+    if (parsedStartsOn > parsedEndDate) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
 
     // Validate platform
     if (!['google_ads', 'facebook_ads'].includes(platform)) {
@@ -104,7 +116,8 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         name,
         budget,
         spent: 0,
-        endDate: new Date(endDate),
+        startsOn: parsedStartsOn,
+        endDate: parsedEndDate,
         platform,
         googleAdsType: platform === 'google_ads' ? googleAdsType : null,
         activeDays: activeDays ? JSON.stringify(activeDays) : null,
@@ -126,7 +139,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 router.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const campaignId = parseInt(req.params.id as string);
-    const { name, budget, endDate, platform, googleAdsType, activeDays } = req.body;
+    const { name, budget, startsOn, endDate, platform, googleAdsType, activeDays } = req.body;
 
     // Get existing campaign with client
     const existingCampaign = await prisma.campaign.findUnique({
@@ -199,12 +212,19 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
       }
     }
 
+
+    const parsedStartsOn = startsOn === undefined ? existingCampaign.startsOn : parseDate(startsOn);
+    const parsedEndDate = endDate === undefined ? existingCampaign.endDate : parseDate(endDate);
+    if (!parsedStartsOn || !parsedEndDate) return res.status(400).json({ error: 'วันที่แคมเปญไม่ถูกต้อง' });
+    if (parsedStartsOn > parsedEndDate) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
+
     const updatedCampaign = await prisma.campaign.update({
       where: { id: campaignId },
       data: {
         ...(name && { name }),
         ...(budget !== undefined && { budget }),
-        ...(endDate && { endDate: new Date(endDate) }),
+        ...(startsOn !== undefined && { startsOn: parsedStartsOn }),
+        ...(endDate !== undefined && { endDate: parsedEndDate }),
         ...(platform && { platform }),
         ...(platform === 'google_ads' && { googleAdsType }),
         ...(platform === 'facebook_ads' && { googleAdsType: null }),

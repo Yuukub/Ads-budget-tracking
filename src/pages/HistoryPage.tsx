@@ -77,7 +77,7 @@ export function HistoryPage() {
         'Spent': c.spent,
         'Remaining': remaining,
         'Status': remaining < 0 ? 'Overspent' : 'Under Budget',
-        'Start Date': formatDate(c.createdAt), // Approximation or use activeDays if stored? database has createdAt
+        'Start Date': formatDate(c.startsOn),
         'End Date': formatDate(c.endDate)
       };
     });
@@ -406,7 +406,7 @@ export function HistoryPage() {
                             </span>
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            สิ้นสุด: {formatDate(campaign.endDate)}
+                            เริ่ม: {formatDate(campaign.startsOn)} • สิ้นสุด: {formatDate(campaign.endDate)}
                             {campaign.archivedAt && ` | เก็บประวัติ: ${formatDate(campaign.archivedAt)}`}
                           </div>
                         </div>

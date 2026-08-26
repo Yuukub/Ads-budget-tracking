@@ -81,7 +81,7 @@ export function HistoryModal({ isOpen, onClose, client, history, isLoading }: Hi
                         </div>
 
                         <div className="mt-2 text-xs text-gray-500">
-                          หมดอายุ: {formatDate(campaign.endDate)}
+                          เริ่ม: {formatDate(campaign.startsOn)} • สิ้นสุด: {formatDate(campaign.endDate)}
                           {campaign.archivedAt && (
                             <span className="ml-2">| เก็บเมื่อ: {formatDate(campaign.archivedAt)}</span>
                           )}

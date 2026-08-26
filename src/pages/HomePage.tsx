@@ -407,7 +407,7 @@ export function HomePage({ adminMode = false, targetUserId }: HomePageProps) {
               <span className="text-2xl">📢</span>
               <div>
                 <div className="text-2xl font-bold text-foreground">{dashboardStats.campaignCount}</div>
-                <div className="text-sm text-muted-foreground">แคมเปญ Active</div>
+                <div className="text-sm text-muted-foreground">แคมเปญปัจจุบัน</div>
               </div>
             </div>
           </div>

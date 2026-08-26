@@ -44,9 +44,15 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
     ? DAYS_ORDER.filter(d => campaign.activeDays!.includes(d))
     : DAYS_ORDER.filter(d => ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'].includes(d)); // default
 
-  const statusText = daysRemaining > 0
-    ? `เหลือ ${daysRemaining} วัน`
-    : `หมดแล้ว ${Math.abs(daysRemaining)} วัน`;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = new Date(`${campaign.startsOn.slice(0, 10)}T00:00:00`);
+  const daysUntilStart = Math.max(0, Math.ceil((startDate.getTime() - today.getTime()) / 86400000));
+  const statusText = status === 'scheduled'
+    ? `รอเริ่มอีก ${daysUntilStart} วัน`
+    : daysRemaining > 0
+      ? `เหลือ ${daysRemaining} วัน`
+      : `หมดแล้ว ${Math.abs(daysRemaining)} วัน`;
   const cancellablePause = campaign.pauseEvents?.find(pause => pause.status === 'paused' || pause.status === 'scheduled');
   const displayedPause = campaign.pauseEvents?.find(pause => pause.status === campaign.pauseStatus);
   const pauseDateDetails = displayedPause
@@ -79,7 +85,7 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
             googleAdsType={campaign.googleAdsType}
             size="sm"
           />
-          <span title={status === 'active' ? 'กำลังใช้งาน' : status === 'expiring_soon' ? 'ใกล้หมดอายุ' : 'หมดอายุแล้ว'}>
+          <span title={status === 'scheduled' ? 'รอเริ่มยิงแอด' : status === 'active' ? 'กำลังใช้งาน' : status === 'expiring_soon' ? 'ใกล้หมดอายุ' : 'หมดอายุแล้ว'}>
             {getStatusEmoji(status)}
           </span>
         </div>
@@ -156,7 +162,7 @@ export function CampaignCard({ campaign, onUpdateSpent, onEdit, onDelete, onArch
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <span className="text-sm text-muted-foreground">
-          หมดอายุ: {formatDate(campaign.endDate)} ({statusText})
+          เริ่ม: {formatDate(campaign.startsOn)} • สิ้นสุด: {formatDate(campaign.endDate)} ({statusText})
         </span>
         {!readOnly && (
           <div className="grid grid-cols-2 sm:flex gap-2">
