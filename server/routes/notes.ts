@@ -155,7 +155,11 @@ function parseNotePayload(body: Record<string, unknown>, existing?: NoteWithRela
   const loginUrl = validUrl(stringValue(body.loginUrl, 2000, 'URL'));
   const username = stringValue(body.username, 500, 'Username');
   const tags = cleanTags(body.tags);
-  if (body.isPinned !== undefined && typeof body.isPinned !== 'boolean') throw new Error('สถานะปักหมุดไม่ถูกต้อง');
+  let isPinned: boolean | undefined;
+  if (body.isPinned !== undefined) {
+    if (typeof body.isPinned !== 'boolean') throw new Error('สถานะปักหมุดไม่ถูกต้อง');
+    isPinned = body.isPinned;
+  }
   const taskStatus = body.taskStatus === undefined ? undefined : body.taskStatus;
   const priority = body.priority === undefined ? undefined : body.priority;
   const dueOn = parseDate(body.dueOn);
@@ -164,7 +168,7 @@ function parseNotePayload(body: Record<string, unknown>, existing?: NoteWithRela
   if (priority !== undefined && !PRIORITIES.has(priority as NotePriority)) throw new Error('ความสำคัญไม่ถูกต้อง');
   if (category !== NoteCategory.ACCESS && (host !== undefined || loginUrl !== undefined || username !== undefined || body.secret !== undefined || body.clearSecret)) throw new Error('ข้อมูลเข้าสู่ระบบใช้ได้เฉพาะ Note ประเภทโฮสต์/ข้อมูลเข้าสู่ระบบ');
   const nextStatus = (taskStatus ?? existing?.taskStatus) as NoteTaskStatus | null | undefined;
-  return { category: category as NoteCategory, title, content, clientName, host, loginUrl, username, tags, isPinned: body.isPinned === undefined ? undefined : body.isPinned,
+  return { category: category as NoteCategory, title, content, clientName, host, loginUrl, username, tags, isPinned,
     taskStatus: category === NoteCategory.TASK ? (taskStatus as NoteTaskStatus | undefined) : null, priority: category === NoteCategory.TASK ? (priority as NotePriority | undefined) : null,
     dueOn: category === NoteCategory.TASK ? dueOn : null, completedAt: category === NoteCategory.TASK && taskStatus !== undefined ? (nextStatus === NoteTaskStatus.DONE ? new Date() : null) : undefined };
 }
