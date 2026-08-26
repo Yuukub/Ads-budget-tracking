@@ -15,7 +15,7 @@
     "db:push": "prisma db push",
     "db:backfill-cycles": "tsx server/scripts/backfillCampaignCycles.ts",
     "test:cycles": "tsx --test server/lib/campaignCycles.test.ts",
-    "test:notes": "tsx --test server/lib/noteSecrets.test.ts server/lib/notePermissions.test.ts server/lib/clipboard.test.ts server/routes/notes.integration.test.ts",
+    "test:notes": "tsx --test server/lib/noteSecrets.test.ts server/lib/notePermissions.test.ts server/lib/noteLinks.test.ts server/lib/clipboard.test.ts server/routes/notes.integration.test.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },

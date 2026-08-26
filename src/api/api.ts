@@ -338,6 +338,10 @@ export const notesApi = {
     const { data } = await api.get<{ secret: string }>(`/notes/${id}/secret`, { headers: { 'Cache-Control': 'no-store' } });
     return data;
   },
+  revealSecureContent: async (id: string) => {
+    const { data } = await api.get<{ content: string }>(`/notes/${id}/secure-content`, { headers: { 'Cache-Control': 'no-store' } });
+    return data;
+  },
   searchUsers: async (q: string) => {
     const { data } = await api.get<NoteShareUser[]>(`/note-share-users?q=${encodeURIComponent(q)}`);
     return data;

@@ -267,12 +267,30 @@ enum NotePriority {
   HIGH
 }
 
+enum NoteLinkKind {
+  GOOGLE_SHEETS
+  GOOGLE_DOCS
+  GOOGLE_SLIDES
+  GOOGLE_DRIVE
+  WEBSITE
+}
+
+enum NoteSecretAccessType {
+  PASSWORD
+  SECURE_CONTENT
+}
+
 model Note {
   id               String          @id @default(cuid())
   ownerId          Int             @map("owner_id")
   category         NoteCategory    @default(GENERAL)
   title            String
   content          String          @default("")
+  contentCiphertext String?        @map("content_ciphertext")
+  contentIv        String?         @map("content_iv")
+  contentAuthTag   String?         @map("content_auth_tag")
+  contentKeyVersion Int?           @map("content_key_version")
+  secureContentLineCount Int       @default(0) @map("secure_content_line_count")
   tags             String[]        @default([])
   isPinned         Boolean         @default(false) @map("is_pinned")
   clientName       String?         @map("client_name")
@@ -292,12 +310,28 @@ model Note {
   owner            User            @relation("OwnedNotes", fields: [ownerId], references: [id], onDelete: Cascade)
   shares           NoteShare[]
   secretAccessLogs NoteSecretAccessLog[]
+  links           NoteLink[]
 
   @@index([ownerId, isPinned, updatedAt])
   @@index([ownerId, category, updatedAt])
   @@index([ownerId, taskStatus, dueOn])
   @@index([updatedAt])
   @@map("notes")
+}
+
+model NoteLink {
+  id        String       @id @default(cuid())
+  noteId    String       @map("note_id")
+  url       String
+  label     String
+  kind      NoteLinkKind
+  sortOrder Int          @default(0) @map("sort_order")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  note      Note         @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, sortOrder])
+  @@map("note_links")
 }
 
 model NoteShare {
@@ -318,6 +352,7 @@ model NoteSecretAccessLog {
   noteId        String   @map("note_id")
   actorUserId   Int      @map("actor_user_id")
   accessedAt    DateTime @default(now()) @map("accessed_at")
+  accessType    NoteSecretAccessType @default(PASSWORD) @map("access_type")
   note          Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
   actor         User     @relation("NoteSecretAccesses", fields: [actorUserId], references: [id], onDelete: Cascade)
 

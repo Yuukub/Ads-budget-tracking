@@ -294,6 +294,7 @@ export interface SharedDataResponse {
 export type NoteCategory = 'GENERAL' | 'CLIENT_PROJECT' | 'ACCESS' | 'TASK';
 export type NoteTaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 export type NotePriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type NoteLinkKind = 'GOOGLE_SHEETS' | 'GOOGLE_DOCS' | 'GOOGLE_SLIDES' | 'GOOGLE_DRIVE' | 'WEBSITE';
 
 export interface NoteShareUser {
   id: number;
@@ -308,6 +309,19 @@ export interface NoteShare {
   user: NoteShareUser;
 }
 
+export interface NoteLink {
+  id: string;
+  url: string;
+  label: string;
+  kind: NoteLinkKind;
+  sortOrder: number;
+}
+
+export interface NoteLinkFormData {
+  url: string;
+  label?: string;
+}
+
 export interface AppNote {
   id: string;
   category: NoteCategory;
@@ -320,6 +334,8 @@ export interface AppNote {
   loginUrl: string | null;
   username: string | null;
   hasSecret: boolean;
+  hasSecureContent: boolean;
+  secureContentLineCount: number;
   taskStatus: NoteTaskStatus | null;
   priority: NotePriority | null;
   dueOn: string | null;
@@ -330,7 +346,9 @@ export interface AppNote {
   isOwner: boolean;
   canEdit: boolean;
   canViewSecret: boolean;
+  canViewSecureContent: boolean;
   isShared: boolean;
+  links: NoteLink[];
   shares?: NoteShare[];
 }
 
@@ -346,6 +364,9 @@ export interface NoteFormData {
   username?: string | null;
   secret?: string;
   clearSecret?: boolean;
+  secureContent?: string;
+  clearSecureContent?: boolean;
+  links?: NoteLinkFormData[];
   taskStatus?: NoteTaskStatus | null;
   priority?: NotePriority | null;
   dueOn?: string | null;

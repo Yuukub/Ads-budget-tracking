@@ -19,8 +19,9 @@ function noteRecord(overrides: UnknownRecord = {}) {
   return {
     id: 'note-1', ownerId: 1, category: 'GENERAL', title: 'API Note', content: '', tags: [], isPinned: false,
     clientName: null, host: null, loginUrl: null, username: null, secretCiphertext: null, secretIv: null,
-    secretAuthTag: null, secretKeyVersion: null, taskStatus: null, priority: null, dueOn: null, completedAt: null,
-    createdAt: now, updatedAt: now, owner: users[1], shares: [], ...overrides,
+    secretAuthTag: null, secretKeyVersion: null, contentCiphertext: null, contentIv: null, contentAuthTag: null,
+    contentKeyVersion: null, secureContentLineCount: 0, taskStatus: null, priority: null, dueOn: null, completedAt: null,
+    createdAt: now, updatedAt: now, owner: users[1], shares: [], links: [], ...overrides,
   };
 }
 
@@ -41,6 +42,7 @@ function fakeDatabase(overrides: UnknownRecord = {}) {
       update: async () => ({ noteId: 'note-1', userId: 2, canViewSecret: false, createdAt: new Date(), user: users[2] }),
       delete: async () => ({}),
     },
+    noteLink: { createMany: async () => ({ count: 0 }), deleteMany: async () => ({ count: 0 }) },
     noteSecretAccessLog: { create: async () => ({}) },
     user: {
       findMany: async () => [users[2]],
@@ -113,6 +115,53 @@ test('create Note stores recipients inside the same transaction and omits cipher
   });
 });
 
+test('creating secure content clears plain content before writing and never returns ciphertext', async () => {
+  process.env.NOTES_ENCRYPTION_KEY_V1 = Buffer.alloc(32, 8).toString('base64');
+  let saved = noteRecord();
+  const database = fakeDatabase();
+  const transactionDatabase = database as unknown as UnknownRecord;
+  transactionDatabase.note = {
+    ...(transactionDatabase.note as UnknownRecord),
+    create: async ({ data }: { data: UnknownRecord }) => { saved = noteRecord(data); return saved; },
+    findUniqueOrThrow: async () => saved,
+  };
+  transactionDatabase.$transaction = async (operation: (transaction: UnknownRecord) => Promise<unknown>) => operation(transactionDatabase);
+
+  await withApi(database, async (baseUrl, token) => {
+    const response = await fetch(`${baseUrl}/notes`, {
+      method: 'POST', headers: auth(token(1)),
+      body: JSON.stringify({ category: 'GENERAL', title: 'Gmail ลับ', content: 'must not persist', secureContent: 'one@example.com\nsecret value' }),
+    });
+    assert.equal(response.status, 201);
+    const body = await response.json() as UnknownRecord;
+    assert.equal(saved.content, '');
+    assert.notEqual(saved.contentCiphertext, 'one@example.com\nsecret value');
+    assert.equal(body.contentCiphertext, undefined);
+    assert.equal(body.content, '');
+  });
+});
+
+test('updating secure content rejects replace and delete in the same request', async () => {
+  process.env.NOTES_ENCRYPTION_KEY_V1 = Buffer.alloc(32, 10).toString('base64');
+  let updateCalled = false;
+  const database = fakeDatabase();
+  const transactionDatabase = database as unknown as UnknownRecord;
+  transactionDatabase.note = {
+    ...(transactionDatabase.note as UnknownRecord),
+    findUnique: async () => noteRecord(),
+    update: async () => { updateCalled = true; return noteRecord(); },
+  };
+
+  await withApi(database, async (baseUrl, token) => {
+    const response = await fetch(`${baseUrl}/notes/note-1`, {
+      method: 'PATCH', headers: auth(token(1)),
+      body: JSON.stringify({ secureContent: 'replacement secret', clearSecureContent: true }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal(updateCalled, false);
+  });
+});
+
 test('shared recipient can read but cannot update Note', async () => {
   const sharedNote = noteRecord({ shares: [{ noteId: 'note-1', userId: 2, canViewSecret: false, createdAt: new Date(), user: users[2] }] });
   const database = fakeDatabase({ note: { findUnique: async () => sharedNote } });
@@ -169,6 +218,33 @@ test('revoking secret permission takes effect immediately', async () => {
     const denied = await fetch(`${baseUrl}/notes/note-1/secret`, { headers: auth(token(2)) });
     assert.equal(denied.status, 403);
   });
+});
+
+test('secure content is encrypted, excluded from ordinary responses, and audited when opened', async () => {
+  const encodedKey = Buffer.alloc(32, 6).toString('base64');
+  process.env.NOTES_ENCRYPTION_KEY_V1 = encodedKey;
+  const encrypted = encryptNoteSecret('gmail-one@example.com\npassword: private', encodedKey);
+  const auditData: UnknownRecord[] = [];
+  const secured = noteRecord({
+    content: '', contentCiphertext: encrypted.ciphertext, contentIv: encrypted.iv,
+    contentAuthTag: encrypted.authTag, contentKeyVersion: encrypted.keyVersion, secureContentLineCount: 2,
+  });
+  const database = fakeDatabase({
+    note: { findUnique: async () => secured },
+    noteSecretAccessLog: { create: async ({ data }: { data: UnknownRecord }) => { auditData.push(data); return {}; } },
+  });
+  await withApi(database, async (baseUrl, token) => {
+    const detail = await fetch(`${baseUrl}/notes/note-1`, { headers: auth(token(1)) });
+    const ordinary = await detail.json() as UnknownRecord;
+    assert.equal(ordinary.contentCiphertext, undefined);
+    assert.equal(ordinary.contentAuthTag, undefined);
+    assert.equal(ordinary.hasSecureContent, true);
+
+    const revealed = await fetch(`${baseUrl}/notes/note-1/secure-content`, { headers: auth(token(1)) });
+    assert.equal(revealed.status, 200);
+    assert.equal((await revealed.json() as { content: string }).content, 'gmail-one@example.com\npassword: private');
+  });
+  assert.deepEqual(auditData[0], { noteId: 'note-1', actorUserId: 1, accessType: 'SECURE_CONTENT' });
 });
 
 test('tag filter and tag search are normalized to lowercase', async () => {
