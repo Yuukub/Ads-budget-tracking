@@ -29,11 +29,14 @@ export function monthEnd(value: Date | string): Date {
   return new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0));
 }
 
-// Campaigns may have started before a mid-month rebaseline. Their historical
-// start date can go back to the first day of the budget period's month, while
-// new campaigns still default to the period's actual startsOn date or today.
-export function campaignStartFloor(period: { month: Date; startsOn: Date }): Date {
-  return monthStart(period.month);
+// A campaign's real start date may predate the current budget period. The
+// period only limits future dates; past starts do not change spent or cause
+// retroactive daily-budget calculations.
+export function campaignStartIsWithinPeriodEnd(
+  startsOn: Date,
+  period: { endsOn: Date },
+): boolean {
+  return dateOnly(startsOn) <= dateOnly(period.endsOn);
 }
 
 export function initialBudgetPeriodData(

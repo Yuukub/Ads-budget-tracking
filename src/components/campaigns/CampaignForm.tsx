@@ -24,12 +24,6 @@ function defaultStartDate(client: Client): string {
   return periodStart && periodStart > today ? periodStart : today;
 }
 
-function minimumCampaignStart(client: Client): string | undefined {
-  const budgetMonth = client.budgetPeriodMonth?.slice(0, 7);
-  if (budgetMonth) return `${budgetMonth}-01`;
-  return client.budgetPeriodStartsOn?.slice(0, 10);
-}
-
 interface CampaignFormProps {
   campaign?: Campaign;
   client: Client;
@@ -112,12 +106,6 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
 
     if (!startsOn) {
       setError('กรุณาเลือกวันเริ่มยิงแอด');
-      return;
-    }
-
-    const minimumStart = minimumCampaignStart(client);
-    if (minimumStart && startsOn < minimumStart) {
-      setError('วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน');
       return;
     }
 
@@ -226,7 +214,6 @@ export function CampaignForm({ campaign, client, onSubmit, onCancel, isLoading }
           label="วันเริ่มยิงแอด"
           type="date"
           value={startsOn}
-          min={minimumCampaignStart(client)}
           max={client.budgetPeriodEndsOn?.slice(0, 10) || endDate}
           onChange={(e) => setStartsOn(e.target.value)}
           required

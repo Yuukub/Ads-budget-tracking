@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { countActiveDays, enrichCampaign } from '../../src/utils/helpers.js';
 import type { Campaign } from '../../src/types/index.js';
-import { budgetPeriodTotals, campaignStartFloor, initialBudgetPeriodData, monthEnd, pauseState, shiftEndDateToMonth, toClientCampaign } from './campaignCycles.js';
+import { budgetPeriodTotals, campaignStartIsWithinPeriodEnd, initialBudgetPeriodData, monthEnd, pauseState, shiftEndDateToMonth, toClientCampaign } from './campaignCycles.js';
 import { normalizeWebsiteUrl } from './clientWebsite.js';
 
 function campaignFixture(overrides: Partial<Campaign> = {}): Campaign {
@@ -133,15 +133,12 @@ test('missing cycle is bootstrapped from the client current budget', () => {
   assert.equal(data.endsOn.toISOString().slice(0, 10), '2026-08-31');
 });
 
-test('campaign start may precede a mid-month rebaseline within the same budget month', () => {
-  const floor = campaignStartFloor({
-    month: new Date('2026-08-01T00:00:00.000Z'),
-    startsOn: new Date('2026-08-26T00:00:00.000Z'),
-  });
+test('campaign start may precede the current budget month', () => {
+  const period = { endsOn: new Date('2026-09-30T00:00:00.000Z') };
   const actualCampaignStart = new Date('2026-08-18T00:00:00.000Z');
 
-  assert.equal(floor.toISOString().slice(0, 10), '2026-08-01');
-  assert.equal(actualCampaignStart >= floor, true);
+  assert.equal(campaignStartIsWithinPeriodEnd(actualCampaignStart, period), true);
+  assert.equal(campaignStartIsWithinPeriodEnd(new Date('2026-10-01T00:00:00.000Z'), period), false);
 });
 
 test('campaign does not count days before its start date and is scheduled', () => {

@@ -5,7 +5,7 @@ import {
   CAMPAIGN_CYCLES_ENABLED,
   bangkokToday,
   budgetPeriodTotals,
-  campaignStartFloor,
+  campaignStartIsWithinPeriodEnd,
   createPauseNotifications,
   createRolloverNotification,
   initialBudgetPeriodData,
@@ -132,7 +132,7 @@ router.post('/campaigns', async (req: AuthRequest, res: Response, next: NextFunc
     const start = startsOn === undefined ? defaultStart : parseDate(startsOn);
     const end = requestedEnd ?? cycle.endsOn;
     if (!start) return res.status(400).json({ error: 'วันเริ่มยิงแอดไม่ถูกต้อง' });
-    if (start < campaignStartFloor(cycle) || start > cycle.endsOn) {
+    if (!campaignStartIsWithinPeriodEnd(start, cycle)) {
       return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน' });
     }
     if (start > end) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
@@ -166,7 +166,7 @@ router.put('/campaigns/:id', async (req: AuthRequest, res: Response, next: NextF
     if (!endDate) return res.status(400).json({ error: 'วันสิ้นสุดไม่ถูกต้อง' });
     const startsOn = req.body.startsOn === undefined ? current.startsOn : parseDate(req.body.startsOn);
     if (!startsOn) return res.status(400).json({ error: 'วันเริ่มยิงแอดไม่ถูกต้อง' });
-    if (startsOn < campaignStartFloor(current.clientBudgetPeriod) || startsOn > current.clientBudgetPeriod.endsOn) {
+    if (!campaignStartIsWithinPeriodEnd(startsOn, current.clientBudgetPeriod)) {
       return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องอยู่ภายในรอบงบปัจจุบัน' });
     }
     if (startsOn > endDate) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
@@ -365,12 +365,12 @@ router.post('/clients/:id/periods/rollover', async (req: AuthRequest, res: Respo
     for (const entry of continuing) {
       const campaignId = Number(entry.campaignId);
       const previous = current.campaigns.find(period => period.campaignProfileId === campaignId)!;
-      const startsOn = entry.startsOn === undefined ? targetMonth : parseDate(entry.startsOn);
+      const startsOn = entry.startsOn === undefined ? previous.startsOn : parseDate(entry.startsOn);
       const endDate = entry.endDate === undefined ? shiftEndDateToMonth(previous.endDate, targetMonth) : parseDate(entry.endDate);
       if (!startsOn) return res.status(400).json({ error: 'วันเริ่มยิงแอดในรอบใหม่ไม่ถูกต้อง' });
       if (!endDate) return res.status(400).json({ error: 'วันสิ้นสุดแคมเปญในรอบใหม่ไม่ถูกต้อง' });
-      if (startsOn < targetMonth || startsOn > nextEnd) {
-        return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องอยู่ภายในเดือนรอบใหม่' });
+      if (startsOn > nextEnd) {
+        return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุดรอบใหม่' });
       }
       if (startsOn > endDate) return res.status(400).json({ error: 'วันเริ่มยิงแอดต้องไม่เกินวันสิ้นสุด' });
       preparedCampaigns.push({ campaignId, budget: Number(entry.budget), startsOn, endDate });

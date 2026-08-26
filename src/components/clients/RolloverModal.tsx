@@ -35,7 +35,7 @@ export function RolloverModal({ client, onSubmit, onCancel, isLoading }: Rollove
   const [month, setMonth] = useState(nextMonth());
   const [baseBudget, setBaseBudget] = useState(String(client.totalBudget));
   const [entries, setEntries] = useState<RolloverCampaignEntry[]>(() => client.campaigns.map(campaign => ({
-    campaignId: campaign.id, continue: true, budget: campaign.budget, startsOn: `${nextMonth()}-01`, endDate: shiftedEndDate(campaign.endDate, nextMonth()),
+    campaignId: campaign.id, continue: true, budget: campaign.budget, startsOn: campaign.startsOn.slice(0, 10), endDate: shiftedEndDate(campaign.endDate, nextMonth()),
   })));
   const [error, setError] = useState('');
   const carryEstimate = client.effectiveBudget - client.totalSpent;
@@ -51,7 +51,7 @@ export function RolloverModal({ client, onSubmit, onCancel, isLoading }: Rollove
     if (!/^\d{4}-\d{2}$/.test(nextValue)) return;
     setEntries(previous => previous.map(entry => {
       const campaign = client.campaigns.find(item => item.id === entry.campaignId)!;
-      return { ...entry, startsOn: `${nextValue}-01`, endDate: shiftedEndDate(campaign.endDate, nextValue) };
+      return { ...entry, endDate: shiftedEndDate(campaign.endDate, nextValue) };
     }));
   };
 
@@ -66,11 +66,11 @@ export function RolloverModal({ client, onSubmit, onCancel, isLoading }: Rollove
       return;
     }
     const invalidDates = entries.some(entry => entry.continue && (
-      !entry.startsOn || !entry.endDate || entry.startsOn < `${month}-01`
+      !entry.startsOn || !entry.endDate
       || entry.startsOn > monthEndDate(month) || entry.startsOn > entry.endDate
     ));
     if (invalidDates) {
-      setError('วันเริ่มต้องอยู่ในเดือนรอบใหม่และไม่เกินวันสิ้นสุด');
+      setError('วันเริ่มต้องไม่เกินวันสิ้นสุดของแคมเปญหรือรอบใหม่');
       return;
     }
     onSubmit({ month, baseBudget: Number(baseBudget), campaigns: entries });
@@ -95,7 +95,7 @@ export function RolloverModal({ client, onSubmit, onCancel, isLoading }: Rollove
               <label className="flex items-center gap-2 font-medium"><input type="checkbox" checked={entry.continue} onChange={e => updateEntry(campaign.id, { continue: e.target.checked })} /> ทำต่อ: {campaign.name}</label>
               {entry.continue && <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Input label="งบรอบใหม่" type="number" min="0.01" step="0.01" value={entry.budget} onChange={e => updateEntry(campaign.id, { budget: Number(e.target.value) })} />
-                <Input label="วันเริ่มยิงแอด" type="date" min={`${month}-01`} max={monthEndDate(month)} value={entry.startsOn || ''} onChange={e => updateEntry(campaign.id, { startsOn: e.target.value })} />
+                <Input label="วันเริ่มยิงแอดจริง" type="date" max={monthEndDate(month)} value={entry.startsOn || ''} onChange={e => updateEntry(campaign.id, { startsOn: e.target.value })} />
                 <Input label="วันสิ้นสุด" type="date" min={entry.startsOn || `${month}-01`} value={entry.endDate || ''} onChange={e => updateEntry(campaign.id, { endDate: e.target.value })} />
               </div>}
             </div>
