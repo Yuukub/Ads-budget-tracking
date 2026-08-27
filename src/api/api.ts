@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, RebaselineFormData, AppNotification, AppNote, NoteFilters, NoteFormData, NoteShare, NoteShareUser, NotesResponse } from '../types';
+import { Client, ClientFormData, CampaignFormData, User, Campaign, HistoryResponse, HistoryFilters, Settings, SettingsAdmin, AdminDashboard, AdminUser, UserRole, UserStatus, BudgetLog, BudgetLogFormData, BudgetMonthRange, BudgetFilterBasis, ShareLink, ShareLinkFormData, ShareAccessLog, SharedDataResponse, PauseFormData, RolloverFormData, RebaselineFormData, AppNotification, AppNote, NoteFilters, NoteFormData, NoteShare, NoteShareUser, NotesResponse } from '../types';
 
 const API_URL = '/api';
 
@@ -240,8 +240,9 @@ export const adminApi = {
 
 // Budget API
 export const budgetApi = {
-  getAll: async (range?: BudgetMonthRange) => {
+  getAll: async (range?: BudgetMonthRange, basis: BudgetFilterBasis = 'budget') => {
     const params = new URLSearchParams();
+    params.set('basis', basis);
     if (range) {
       params.set('startMonth', range.startMonth);
       params.set('endMonth', range.endMonth);
@@ -252,6 +253,11 @@ export const budgetApi = {
 
   create: async (formData: BudgetLogFormData) => {
     const { data } = await api.post<BudgetLog>('/budget', formData);
+    return data;
+  },
+
+  update: async (id: number, formData: BudgetLogFormData) => {
+    const { data } = await api.put<BudgetLog>(`/budget/${id}`, formData);
     return data;
   },
 
@@ -298,13 +304,14 @@ export const shareApi = {
     return data;
   },
 
-  getData: async (token: string, page: 'home' | 'budget', password?: string, range?: BudgetMonthRange) => {
+  getData: async (token: string, page: 'home' | 'budget', password?: string, range?: BudgetMonthRange, basis: BudgetFilterBasis = 'budget') => {
     const params = new URLSearchParams({ page });
     if (password) params.append('password', password);
     if (range) {
       params.set('startMonth', range.startMonth);
       params.set('endMonth', range.endMonth);
     }
+    if (page === 'budget') params.set('basis', basis);
     const { data } = await api.get<SharedDataResponse>(`/share/${token}/data?${params.toString()}`);
     return data;
   },

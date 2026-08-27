@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { shareApi } from '../api/api';
-import { BudgetLog, BudgetPeriod } from '../types';
+import { BudgetFilterBasis, BudgetLog, BudgetPeriod } from '../types';
 import { Button } from '../components/ui/Button';
 import { BudgetPeriodFilter } from '../components/budget/BudgetPeriodFilter';
 import { formatCurrency } from '../utils/helpers';
-import { getBudgetMonthRange, getBudgetPeriodFromSearchParams, getBudgetPeriodLabel, getBudgetPeriodSearchParams } from '../utils/budgetPeriod';
+import { formatBudgetMonth, getBudgetFilterBasis, getBudgetMonthRange, getBudgetPeriodFromSearchParams, getBudgetPeriodLabel, getBudgetPeriodSearchParams, usesAnotherBudgetMonth } from '../utils/budgetPeriod';
 
 interface ShareInfo {
   valid: boolean;
@@ -18,8 +18,8 @@ export function SharedBudgetPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const periodQuery = searchParams.toString();
-  const period = useMemo(() => getBudgetPeriodFromSearchParams(searchParams), [searchParams, periodQuery]);
+  const period = getBudgetPeriodFromSearchParams(searchParams);
+  const basis = getBudgetFilterBasis(searchParams);
   const monthRange = useMemo(() => getBudgetMonthRange(period), [period]);
 
   const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
@@ -62,7 +62,7 @@ export function SharedBudgetPage() {
       }
 
       // Load data
-      const response = await shareApi.getData(token, 'budget', pwd, monthRange);
+      const response = await shareApi.getData(token, 'budget', pwd, monthRange, basis);
       setBudgetLogs(response.data as BudgetLog[]);
     } catch (err: unknown) {
       const error = err as { response?: { status: number; data?: { requiresPassword?: boolean; error?: string } } };
@@ -77,7 +77,7 @@ export function SharedBudgetPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, monthRange]);
+  }, [token, monthRange, basis]);
 
   // Validate token and load data
   useEffect(() => {
@@ -96,7 +96,11 @@ export function SharedBudgetPage() {
   };
 
   const handlePeriodChange = (nextPeriod: BudgetPeriod) => {
-    setSearchParams(getBudgetPeriodSearchParams(nextPeriod));
+    setSearchParams(getBudgetPeriodSearchParams(nextPeriod, basis));
+  };
+
+  const handleBasisChange = (nextBasis: BudgetFilterBasis) => {
+    setSearchParams(getBudgetPeriodSearchParams(period, nextBasis));
   };
 
   // Split logs by type
@@ -205,7 +209,7 @@ export function SharedBudgetPage() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-6 space-y-3">
           <p className="text-sm text-muted-foreground">กำลังแสดง: {getBudgetPeriodLabel(period)}</p>
-          <BudgetPeriodFilter period={period} onChange={handlePeriodChange} />
+          <BudgetPeriodFilter period={period} onChange={handlePeriodChange} basis={basis} onBasisChange={handleBasisChange} />
         </div>
 
         {/* Two Column Table Layout - like original */}
@@ -219,7 +223,7 @@ export function SharedBudgetPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted text-muted-foreground">
                   <tr>
-                    <th className="p-3 text-left font-medium">วันที่</th>
+                    <th className="p-3 text-left font-medium">วันที่จริง</th>
                     <th className="p-3 text-left font-medium">ลูกค้า</th>
                     <th className="p-3 text-right font-medium">ยอดรับ</th>
                     <th className="p-3 text-right font-medium">ยอด Ads</th>
@@ -228,7 +232,10 @@ export function SharedBudgetPage() {
                 <tbody className="divide-y divide-border">
                   {receivedLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-muted/50">
-                      <td className="p-3">{formatDate(log.date)}</td>
+                      <td className="p-3">
+                        <div>{formatDate(log.date)}</div>
+                        {usesAnotherBudgetMonth(log.date, log.budgetMonth) && <div className="mt-1 whitespace-nowrap text-xs text-blue-600">ใช้เดือน {formatBudgetMonth(log.budgetMonth)}</div>}
+                      </td>
                       <td className="p-3 font-medium">{log.clientName}</td>
                       <td className="p-3 text-right text-green-600">{formatCurrency(log.amount)}</td>
                       <td className="p-3 text-right text-blue-600">{formatCurrency(log.usableAmount || 0)}</td>
@@ -253,7 +260,7 @@ export function SharedBudgetPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted text-muted-foreground">
                   <tr>
-                    <th className="p-3 text-left font-medium">วันที่</th>
+                    <th className="p-3 text-left font-medium">วันที่จริง</th>
                     <th className="p-3 text-left font-medium">ลูกค้า</th>
                     <th className="p-3 text-left font-medium">Platform</th>
                     <th className="p-3 text-right font-medium">ยอดเติม</th>
@@ -262,7 +269,10 @@ export function SharedBudgetPage() {
                 <tbody className="divide-y divide-border">
                   {topupLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-muted/50">
-                      <td className="p-3">{formatDate(log.date)}</td>
+                      <td className="p-3">
+                        <div>{formatDate(log.date)}</div>
+                        {usesAnotherBudgetMonth(log.date, log.budgetMonth) && <div className="mt-1 whitespace-nowrap text-xs text-blue-600">ใช้เดือน {formatBudgetMonth(log.budgetMonth)}</div>}
+                      </td>
                       <td className="p-3 font-medium">{log.clientName}</td>
                       <td className="p-3 text-muted-foreground text-xs">{log.platform || '-'}</td>
                       <td className="p-3 text-right text-orange-600">{formatCurrency(log.amount)}</td>
@@ -282,7 +292,7 @@ export function SharedBudgetPage() {
         {/* Summary Cards - 4 cards like original */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           <div className="bg-card p-4 rounded-lg border border-border">
-            <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
+            <div className="text-sm text-muted-foreground">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : `ตาม${basis === 'budget' ? 'เดือนงบ' : 'วันที่จริง'}`}</div>
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceived)}</div>
           </div>
           <div className="bg-card p-4 rounded-lg border border-border">

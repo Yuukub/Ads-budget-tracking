@@ -1,79 +1,80 @@
 import express from 'express';
 import prisma from '../lib/prisma.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { BudgetMonthRangeError, parseBudgetMonthRange } from '../lib/budgetPeriod.js';
+import {
+    BudgetLogValidationError,
+    budgetLogWhere,
+    parseBudgetFilterBasis,
+    parseBudgetLogPayload,
+} from '../lib/budgetLog.js';
 
-const router = express.Router();
+function sendBudgetError(res: express.Response, error: unknown, fallback: string) {
+    if (error instanceof BudgetMonthRangeError || error instanceof BudgetLogValidationError) {
+        return res.status(400).json({ error: error.message });
+    }
+    console.error(fallback, error);
+    return res.status(500).json({ error: fallback });
+}
 
-// Get all logs for the authenticated user
-router.get('/', authMiddleware, async (req: any, res) => {
-    try {
-        const range = parseBudgetMonthRange(req.query.startMonth, req.query.endMonth);
-        const logs = await prisma.budgetLog.findMany({
-            where: {
-                userId: req.userId,
-                ...(range ? { date: { gte: range.start, lt: range.end } } : {}),
-            },
-            orderBy: { date: 'desc' },
-        });
-        res.json(logs);
-    } catch (error) {
-        if (error instanceof BudgetMonthRangeError) {
-            return res.status(400).json({ error: error.message });
+export function createBudgetRouter(database: typeof prisma = prisma) {
+    const router = express.Router();
+
+    router.get('/', authMiddleware, async (req: AuthRequest, res) => {
+        try {
+            const range = parseBudgetMonthRange(req.query.startMonth, req.query.endMonth);
+            const basis = parseBudgetFilterBasis(req.query.basis);
+            const logs = await database.budgetLog.findMany({
+                where: budgetLogWhere(req.userId!, range, basis),
+                orderBy: { date: 'desc' },
+            });
+            return res.json(logs);
+        } catch (error) {
+            return sendBudgetError(res, error, 'Failed to fetch budget logs');
         }
-        console.error('Error fetching budget logs:', error);
-        res.status(500).json({ error: 'Failed to fetch budget logs' });
-    }
-});
+    });
 
-// Create a new log
-router.post('/', authMiddleware, async (req: any, res) => {
-    try {
-        const { clientName, date, type, amount, usableAmount, platform, note } = req.body;
-
-        const log = await prisma.budgetLog.create({
-            data: {
-                userId: req.userId,
-                clientName,
-                date: new Date(date),
-                type,
-                amount: parseFloat(amount),
-                usableAmount: usableAmount ? parseFloat(usableAmount) : null,
-                platform,
-                note,
-            },
-        });
-
-        res.json(log);
-    } catch (error) {
-        console.error('Error creating budget log:', error);
-        res.status(500).json({ error: 'Failed to create budget log' });
-    }
-});
-
-// Delete a log
-router.delete('/:id', authMiddleware, async (req: any, res) => {
-    try {
-        const { id } = req.params;
-
-        // Verify ownership
-        const log = await prisma.budgetLog.findUnique({
-            where: { id: parseInt(id) },
-        });
-
-        if (!log || log.userId !== req.userId) {
-            return res.status(403).json({ error: 'Not authorized' });
+    router.post('/', authMiddleware, async (req: AuthRequest, res) => {
+        try {
+            const payload = parseBudgetLogPayload(req.body || {});
+            const log = await database.budgetLog.create({
+                data: { userId: req.userId!, ...payload },
+            });
+            return res.status(201).json(log);
+        } catch (error) {
+            return sendBudgetError(res, error, 'Failed to create budget log');
         }
+    });
 
-        await prisma.budgetLog.delete({
-            where: { id: parseInt(id) },
-        });
+    router.put('/:id', authMiddleware, async (req: AuthRequest, res) => {
+        try {
+            const id = Number(req.params.id);
+            if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'รหัสรายการไม่ถูกต้อง' });
+            const existing = await database.budgetLog.findUnique({ where: { id } });
+            if (!existing || existing.userId !== req.userId) return res.status(403).json({ error: 'Not authorized' });
 
-        res.json({ message: 'Log deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting budget log:', error);
-        res.status(500).json({ error: 'Failed to delete budget log' });
-    }
-});
+            const payload = parseBudgetLogPayload(req.body || {});
+            const log = await database.budgetLog.update({ where: { id }, data: payload });
+            return res.json(log);
+        } catch (error) {
+            return sendBudgetError(res, error, 'Failed to update budget log');
+        }
+    });
 
-export default router;
+    router.delete('/:id', authMiddleware, async (req: AuthRequest, res) => {
+        try {
+            const id = Number(req.params.id);
+            if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'รหัสรายการไม่ถูกต้อง' });
+            const log = await database.budgetLog.findUnique({ where: { id } });
+            if (!log || log.userId !== req.userId) return res.status(403).json({ error: 'Not authorized' });
+            await database.budgetLog.delete({ where: { id } });
+            return res.json({ message: 'Log deleted successfully' });
+        } catch (error) {
+            return sendBudgetError(res, error, 'Failed to delete budget log');
+        }
+    });
+
+    return router;
+}
+
+export default createBudgetRouter();

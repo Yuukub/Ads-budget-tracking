@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
@@ -8,34 +8,43 @@ import { Modal } from '../components/ui/Modal';
 import { ExportButton, ExportColumn } from '../components/ui/ExportButton';
 import { BudgetPeriodFilter } from '../components/budget/BudgetPeriodFilter';
 import { budgetApi } from '../api/api';
-import { BudgetLog, BudgetLogFormData, BudgetPeriod } from '../types';
+import { BudgetFilterBasis, BudgetLog, BudgetLogFormData, BudgetPeriod } from '../types';
 import { formatCurrency, formatDate } from '../utils/helpers';
-import { getBudgetMonthRange, getBudgetPeriodFromSearchParams, getBudgetPeriodLabel, getBudgetPeriodSearchParams } from '../utils/budgetPeriod';
+import { budgetMonthKey, formatBudgetMonth, getBudgetFilterBasis, getBudgetMonthRange, getBudgetPeriodFromSearchParams, getBudgetPeriodLabel, getBudgetPeriodSearchParams, usesAnotherBudgetMonth } from '../utils/budgetPeriod';
 
-export function BudgetLogPage() {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const periodQuery = searchParams.toString();
-    const period = useMemo(() => getBudgetPeriodFromSearchParams(searchParams), [searchParams, periodQuery]);
-    const monthRange = useMemo(() => getBudgetMonthRange(period), [period]);
-    const [logs, setLogs] = useState<BudgetLog[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [sortConfig, setSortConfig] = useState<{ key: 'date' | 'clientName'; direction: 'asc' | 'desc' }>({
-        key: 'date',
-        direction: 'asc'
-    });
-    const [formData, setFormData] = useState<BudgetLogFormData>({
+function emptyBudgetLogForm(): BudgetLogFormData {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return {
         clientName: '',
-        date: new Date().toISOString().split('T')[0],
+        date: today,
         type: 'RECEIVED',
         amount: 0,
         usableAmount: 0,
         platform: 'google_ads',
         note: '',
+    };
+}
+
+export function BudgetLogPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const period = getBudgetPeriodFromSearchParams(searchParams);
+    const basis = getBudgetFilterBasis(searchParams);
+    const monthRange = useMemo(() => getBudgetMonthRange(period), [period]);
+    const [logs, setLogs] = useState<BudgetLog[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingLog, setEditingLog] = useState<BudgetLog | null>(null);
+    const [useDifferentBudgetMonth, setUseDifferentBudgetMonth] = useState(false);
+    const [sortConfig, setSortConfig] = useState<{ key: 'date' | 'clientName'; direction: 'asc' | 'desc' }>({
+        key: 'date',
+        direction: 'asc'
     });
+    const [formData, setFormData] = useState<BudgetLogFormData>(emptyBudgetLogForm);
 
     const exportColumns: ExportColumn[] = [
-        { key: 'date', label: 'Date', formatter: (val) => formatDate(val) },
+        { key: 'date', label: 'Transaction Date', formatter: (val) => formatDate(val) },
+        { key: 'budgetMonth', label: 'Budget Month', formatter: (val) => formatBudgetMonth(String(val)) },
         { key: 'clientName', label: 'Client Name' },
         { key: 'type', label: 'Type' },
         { key: 'platform', label: 'Platform', formatter: (val) => val || '-' },
@@ -47,40 +56,71 @@ export function BudgetLogPage() {
     const fetchLogs = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await budgetApi.getAll(monthRange);
+            const data = await budgetApi.getAll(monthRange, basis);
             setLogs(data);
         } catch (error) {
             console.error('Failed to fetch budget logs:', error);
         } finally {
             setIsLoading(false);
         }
-    }, [monthRange]);
+    }, [monthRange, basis]);
 
     useEffect(() => {
         void fetchLogs();
     }, [fetchLogs]);
 
     const handlePeriodChange = (nextPeriod: BudgetPeriod) => {
-        setSearchParams(getBudgetPeriodSearchParams(nextPeriod));
+        setSearchParams(getBudgetPeriodSearchParams(nextPeriod, basis));
+    };
+
+    const handleBasisChange = (nextBasis: BudgetFilterBasis) => {
+        setSearchParams(getBudgetPeriodSearchParams(period, nextBasis));
+    };
+
+    const openCreateModal = () => {
+        setEditingLog(null);
+        setFormData(emptyBudgetLogForm());
+        setUseDifferentBudgetMonth(false);
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (log: BudgetLog) => {
+        setEditingLog(log);
+        setFormData({
+            clientName: log.clientName,
+            date: log.date.slice(0, 10),
+            budgetMonth: budgetMonthKey(log.budgetMonth),
+            type: log.type,
+            amount: log.amount,
+            usableAmount: log.usableAmount ?? 0,
+            platform: log.platform ?? 'google_ads',
+            note: log.note ?? '',
+        });
+        setUseDifferentBudgetMonth(usesAnotherBudgetMonth(log.date, log.budgetMonth));
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingLog(null);
+        setUseDifferentBudgetMonth(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await budgetApi.create(formData);
+            const payload = {
+                ...formData,
+                budgetMonth: useDifferentBudgetMonth ? formData.budgetMonth : undefined,
+            };
+            if (editingLog) await budgetApi.update(editingLog.id, payload);
+            else await budgetApi.create(payload);
             setIsModalOpen(false);
-            fetchLogs();
-            // Reset form
-            setFormData({
-                clientName: '',
-                date: new Date().toISOString().split('T')[0],
-                type: 'RECEIVED',
-                amount: 0,
-                usableAmount: 0,
-                platform: 'google_ads',
-                note: '',
-            });
-        } catch (error) {
+            setEditingLog(null);
+            setFormData(emptyBudgetLogForm());
+            setUseDifferentBudgetMonth(false);
+            void fetchLogs();
+        } catch {
             alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
         }
     };
@@ -89,8 +129,8 @@ export function BudgetLogPage() {
         if (!confirm('ยืนยันการลบข้อมูล?')) return;
         try {
             await budgetApi.delete(id);
-            fetchLogs();
-        } catch (error) {
+            void fetchLogs();
+        } catch {
             alert('ลบข้อมูลไม่สำเร็จ');
         }
     };
@@ -157,12 +197,12 @@ export function BudgetLogPage() {
                         <ExportButton
                             data={logs}
                             columns={exportColumns}
-                            filename={`budget_log_${period.mode === 'all' ? 'all' : getBudgetPeriodLabel(period).replaceAll(' ', '_')}`}
+                            filename={`budget_log_${basis}_${period.mode === 'all' ? 'all' : getBudgetPeriodLabel(period).replaceAll(' ', '_')}`}
                         />
-                        <Button onClick={() => setIsModalOpen(true)}>+ เพิ่มรายการ</Button>
+                        <Button onClick={openCreateModal}>+ เพิ่มรายการ</Button>
                     </div>
                 </div>
-                <BudgetPeriodFilter period={period} onChange={handlePeriodChange} />
+                <BudgetPeriodFilter period={period} onChange={handlePeriodChange} basis={basis} onBasisChange={handleBasisChange} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -180,7 +220,7 @@ export function BudgetLogPage() {
                                         onClick={() => handleSort('date')}
                                     >
                                         <div className="flex items-center gap-1">
-                                            วันที่
+                                            วันที่จริง
                                             {sortConfig.key === 'date' ? (
                                                 sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-green-600" /> : <ArrowDown size={14} className="text-green-600" />
                                             ) : (
@@ -203,20 +243,24 @@ export function BudgetLogPage() {
                                     </th>
                                     <th className="p-3 text-right font-medium">ยอดรับ</th>
                                     <th className="p-3 text-right font-medium">ยอด Ads</th>
-                                    <th className="p-3 text-center font-medium">ลบ</th>
+                                    <th className="p-3 text-center font-medium">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {receivedLogs.map((log) => (
                                     <tr key={log.id} className="hover:bg-muted/50">
-                                        <td className="p-3">{formatDate(log.date)}</td>
+                                        <td className="p-3">
+                                            <div>{formatDate(log.date)}</div>
+                                            {usesAnotherBudgetMonth(log.date, log.budgetMonth) && <div className="mt-1 whitespace-nowrap text-xs text-blue-600">ใช้เดือน {formatBudgetMonth(log.budgetMonth)}</div>}
+                                        </td>
                                         <td className="p-3 font-medium">{log.clientName}</td>
                                         <td className="p-3 text-right text-green-600">{formatCurrency(log.amount)}</td>
                                         <td className="p-3 text-right text-blue-600">{formatCurrency(log.usableAmount || 0)}</td>
                                         <td className="p-3 text-center">
-                                            <button onClick={() => handleDelete(log.id)} className="text-muted-foreground hover:text-destructive">
-                                                x
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button type="button" onClick={() => openEditModal(log)} className="text-blue-600 hover:text-blue-700" title="แก้ไขรายการ" aria-label={`แก้ไขรายการ ${log.clientName}`}><Pencil size={15} /></button>
+                                                <button type="button" onClick={() => handleDelete(log.id)} className="text-muted-foreground hover:text-destructive" title="ลบรายการ" aria-label={`ลบรายการ ${log.clientName}`}>x</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -244,7 +288,7 @@ export function BudgetLogPage() {
                                         onClick={() => handleSort('date')}
                                     >
                                         <div className="flex items-center gap-1">
-                                            วันที่
+                                            วันที่จริง
                                             {sortConfig.key === 'date' ? (
                                                 sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-orange-600" /> : <ArrowDown size={14} className="text-orange-600" />
                                             ) : (
@@ -267,20 +311,24 @@ export function BudgetLogPage() {
                                     </th>
                                     <th className="p-3 text-left font-medium">Platform</th>
                                     <th className="p-3 text-right font-medium">ยอดเติม</th>
-                                    <th className="p-3 text-center font-medium">ลบ</th>
+                                    <th className="p-3 text-center font-medium">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {topupLogs.map((log) => (
                                     <tr key={log.id} className="hover:bg-muted/50">
-                                        <td className="p-3">{formatDate(log.date)}</td>
+                                        <td className="p-3">
+                                            <div>{formatDate(log.date)}</div>
+                                            {usesAnotherBudgetMonth(log.date, log.budgetMonth) && <div className="mt-1 whitespace-nowrap text-xs text-blue-600">ใช้เดือน {formatBudgetMonth(log.budgetMonth)}</div>}
+                                        </td>
                                         <td className="p-3 font-medium">{log.clientName}</td>
                                         <td className="p-3 text-muted-foreground text-xs">{log.platform}</td>
                                         <td className="p-3 text-right text-orange-600">{formatCurrency(log.amount)}</td>
                                         <td className="p-3 text-center">
-                                            <button onClick={() => handleDelete(log.id)} className="text-muted-foreground hover:text-destructive">
-                                                x
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button type="button" onClick={() => openEditModal(log)} className="text-blue-600 hover:text-blue-700" title="แก้ไขรายการ" aria-label={`แก้ไขรายการ ${log.clientName}`}><Pencil size={15} /></button>
+                                                <button type="button" onClick={() => handleDelete(log.id)} className="text-muted-foreground hover:text-destructive" title="ลบรายการ" aria-label={`ลบรายการ ${log.clientName}`}>x</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -306,7 +354,7 @@ export function BudgetLogPage() {
             >
                 <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 md:grid-cols-4 md:gap-4 lg:px-8">
                     <div className="min-w-0 bg-card p-2.5 sm:p-3 rounded-lg border border-border">
-                        <div className="truncate text-[11px] text-muted-foreground sm:text-sm">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : 'ในช่วงที่เลือก'}</div>
+                        <div className="truncate text-[11px] text-muted-foreground sm:text-sm">ยอดรับ{period.mode === 'all' ? 'ทั้งหมด' : `ตาม${basis === 'budget' ? 'เดือนงบ' : 'วันที่จริง'}`}</div>
                         <div className="truncate text-base font-bold text-green-600 dark:text-green-400 sm:text-xl" title={formatCurrency(totalReceived)}>{formatCurrency(totalReceived)}</div>
                     </div>
                     <div className="min-w-0 bg-card p-2.5 sm:p-3 rounded-lg border border-border">
@@ -329,7 +377,7 @@ export function BudgetLogPage() {
                 </div>
             </section>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="เพิ่มรายการบัญชี">
+            <Modal isOpen={isModalOpen} onClose={closeModal} title={editingLog ? 'แก้ไขรายการบัญชี' : 'เพิ่มรายการบัญชี'}>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">ประเภท</label>
@@ -356,12 +404,46 @@ export function BudgetLogPage() {
                     </div>
 
                     <Input
-                        label="วันที่"
+                        label="วันที่รับ/จ่ายจริง"
                         type="date"
                         value={formData.date}
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                         required
                     />
+
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+                            <input
+                                type="checkbox"
+                                checked={useDifferentBudgetMonth}
+                                onChange={(event) => {
+                                    const checked = event.target.checked;
+                                    setUseDifferentBudgetMonth(checked);
+                                    setFormData(current => ({
+                                        ...current,
+                                        budgetMonth: checked
+                                            ? (period.mode === 'month' ? period.month : period.mode === 'range' ? period.from : budgetMonthKey(current.date))
+                                            : undefined,
+                                    }));
+                                }}
+                                className="accent-blue-600"
+                            />
+                            ใช้สำหรับเดือนอื่น
+                        </label>
+                        <p className="mt-1 text-xs text-muted-foreground">วันที่จริงยังคงเดิม แต่รายการจะถูกรวมยอดในเดือนงบที่เลือก</p>
+                        {useDifferentBudgetMonth && (
+                            <label className="mt-3 block text-sm font-medium text-foreground">
+                                เดือนงบที่นำไปใช้
+                                <input
+                                    type="month"
+                                    value={formData.budgetMonth || budgetMonthKey(formData.date)}
+                                    onChange={(event) => setFormData({ ...formData, budgetMonth: event.target.value })}
+                                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    required
+                                />
+                            </label>
+                        )}
+                    </div>
 
                     <Input
                         label="ชื่อลูกค้า"

@@ -1,13 +1,15 @@
 import { Button } from '../ui/Button';
-import type { BudgetPeriod, BudgetPeriodMode } from '../../types';
+import type { BudgetFilterBasis, BudgetPeriod, BudgetPeriodMode } from '../../types';
 import { getCurrentMonth } from '../../utils/budgetPeriod';
 
 interface BudgetPeriodFilterProps {
   period: BudgetPeriod;
   onChange: (period: BudgetPeriod) => void;
+  basis?: BudgetFilterBasis;
+  onBasisChange?: (basis: BudgetFilterBasis) => void;
 }
 
-export function BudgetPeriodFilter({ period, onChange }: BudgetPeriodFilterProps) {
+export function BudgetPeriodFilter({ period, onChange, basis, onBasisChange }: BudgetPeriodFilterProps) {
   const setMode = (mode: BudgetPeriodMode) => {
     if (mode === 'all') {
       onChange({ mode });
@@ -49,6 +51,19 @@ export function BudgetPeriodFilter({ period, onChange }: BudgetPeriodFilterProps
 
   return (
     <section className="rounded-lg border border-border bg-card p-4">
+      {basis && onBasisChange && (
+        <div className="mb-4 border-b border-border pb-4">
+          <p className="mb-2 text-sm font-medium text-foreground">จัดช่วงเวลาตาม</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant={basis === 'budget' ? 'primary' : 'outline'} onClick={() => onBasisChange('budget')}>
+              เดือนงบที่นำไปใช้
+            </Button>
+            <Button type="button" size="sm" variant={basis === 'transaction' ? 'primary' : 'outline'} onClick={() => onBasisChange('transaction')}>
+              วันที่รับ/จ่ายจริง
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="font-medium text-foreground">ช่วงเวลาบัญชี</h2>

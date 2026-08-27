@@ -225,6 +225,7 @@ export interface BudgetLog {
   userId: number;
   clientName: string;
   date: string; // ISO date string
+  budgetMonth: string; // first day of the reporting month
   type: 'RECEIVED' | 'TOPUP';
   amount: number;
   usableAmount?: number | null;
@@ -237,6 +238,7 @@ export interface BudgetLog {
 export interface BudgetLogFormData {
   clientName: string;
   date: string;
+  budgetMonth?: string; // YYYY-MM; omitted means the month of date
   type: 'RECEIVED' | 'TOPUP';
   amount: number;
   usableAmount?: number;
@@ -245,6 +247,7 @@ export interface BudgetLogFormData {
 }
 
 export type BudgetPeriodMode = 'all' | 'month' | 'range';
+export type BudgetFilterBasis = 'budget' | 'transaction';
 
 export type BudgetPeriod =
   | { mode: 'all' }

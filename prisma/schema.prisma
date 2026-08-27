@@ -203,6 +203,7 @@ model BudgetLog {
   userId        Int      @map("user_id")
   clientName    String   @map("client_name")
   date          DateTime
+  budgetMonth   DateTime @map("budget_month") @db.Date
   type          String   // 'RECEIVED' | 'TOPUP'
   amount        Float
   usableAmount  Float?   @map("usable_amount")
@@ -212,6 +213,8 @@ model BudgetLog {
   updatedAt     DateTime @updatedAt @map("updated_at")
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, budgetMonth])
+  @@index([userId, date])
   @@map("budget_logs")
 }
 
