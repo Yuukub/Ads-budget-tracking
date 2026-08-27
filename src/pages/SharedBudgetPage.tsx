@@ -18,9 +18,16 @@ export function SharedBudgetPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const period = getBudgetPeriodFromSearchParams(searchParams);
-  const basis = getBudgetFilterBasis(searchParams);
-  const monthRange = useMemo(() => getBudgetMonthRange(period), [period]);
+  const periodQuery = searchParams.toString();
+  const { period, basis, monthRange } = useMemo(() => {
+    const params = new URLSearchParams(periodQuery);
+    const nextPeriod = getBudgetPeriodFromSearchParams(params);
+    return {
+      period: nextPeriod,
+      basis: getBudgetFilterBasis(params),
+      monthRange: getBudgetMonthRange(nextPeriod),
+    };
+  }, [periodQuery]);
 
   const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
   const [budgetLogs, setBudgetLogs] = useState<BudgetLog[]>([]);
